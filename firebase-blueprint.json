@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "Material": {
+      "title": "Material",
+      "description": "Item ou insumo cadastrado no almoxarifado de limpeza urbana",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "code": { "type": "string", "maxLength": 50, "description": "Código interno ou código de barras único" },
+        "name": { "type": "string", "maxLength": 150, "description": "Nome descritivo do material ou EPI" },
+        "description": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "enum": ["EPI", "Ferramental", "Uniformes", "Químicos & Limpeza", "Sinalização", "Consumíveis", "Manutenção"] },
+        "unit": { "type": "string", "enum": ["UN", "PAR", "CX", "KG", "LT", "PCT", "M"] },
+        "currentStock": { "type": "number", "description": "Saldo em estoque calculado atomicamente" },
+        "minStock": { "type": "number", "description": "Estoque mínimo de segurança" },
+        "location": { "type": "string", "maxLength": 100, "description": "Localização física no almoxarifado" },
+        "shelf": { "type": "string", "maxLength": 50, "description": "Código da prateleira ou baia" },
+        "status": { "type": "string", "enum": ["ativo", "inativo"] },
+        "supplier": { "type": "string", "maxLength": 150 },
+        "isEpi": { "type": "boolean" },
+        "caNumber": { "type": "string", "maxLength": 30, "description": "Certificado de Aprovação do MTE para EPIs" },
+        "validityMonths": { "type": "number", "description": "Vida útil média estimada em meses" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "name", "category", "unit", "currentStock", "minStock", "status"]
+    },
+    "Movement": {
+      "title": "Movement",
+      "description": "Registro auditável e imutável de movimentação de estoque",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "materialId": { "type": "string", "maxLength": 128 },
+        "materialCode": { "type": "string", "maxLength": 50 },
+        "materialName": { "type": "string", "maxLength": 150 },
+        "type": { "type": "string", "enum": ["ENTRADA_COMPRA", "ENTRADA_RECEBIMENTO", "ENTRADA_DEVOLUCAO", "ENTRADA_AJUSTE", "SAIDA_REQUISICAO", "SAIDA_CONSUMO", "SAIDA_TRANSFERENCIA", "SAIDA_AJUSTE"] },
+        "quantity": { "type": "number" },
+        "previousStock": { "type": "number" },
+        "newStock": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userRole": { "type": "string", "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 100 },
+        "sector": { "type": "string", "maxLength": 100 },
+        "employeeId": { "type": "string", "maxLength": 128 },
+        "employeeName": { "type": "string", "maxLength": 100 },
+        "employeeMatricula": { "type": "string", "maxLength": 50 },
+        "requisitionId": { "type": "string", "maxLength": 128 },
+        "requisitionNumber": { "type": "string", "maxLength": 50 },
+        "observation": { "type": "string", "maxLength": 500 },
+        "justification": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["materialId", "type", "quantity", "previousStock", "newStock", "date", "userId", "userName"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "Funcionário da operação de limpeza urbana destinatário de materiais e EPIs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "matricula": { "type": "string", "maxLength": 50, "description": "Identificador funcional único" },
+        "name": { "type": "string", "maxLength": 150 },
+        "sector": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["ativo", "afastado", "ferias", "desligado"] },
+        "shoeSize": { "type": "string", "maxLength": 10 },
+        "gloveSize": { "type": "string", "maxLength": 10 },
+        "uniformSize": { "type": "string", "maxLength": 10 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["matricula", "name", "sector", "role", "status"]
+    },
+    "Requisition": {
+      "title": "Requisition",
+      "description": "Requisição digital emitida pelo Técnico de Segurança do Trabalho",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "number": { "type": "string", "maxLength": 50, "description": "Número sequencial gerado pelo sistema" },
+        "employeeId": { "type": "string", "maxLength": 128 },
+        "employeeName": { "type": "string", "maxLength": 150 },
+        "employeeMatricula": { "type": "string", "maxLength": 50 },
+        "sector": { "type": "string", "maxLength": 100 },
+        "status": { "type": "string", "enum": ["rascunho", "enviada", "pendente", "parcialmente_atendida", "atendida", "cancelada", "rejeitada"] },
+        "priority": { "type": "string", "enum": ["baixa", "normal", "alta", "critica"] },
+        "justification": { "type": "string", "maxLength": 500 },
+        "observations": { "type": "string", "maxLength": 500 },
+        "rejectionReason": { "type": "string", "maxLength": 500 },
+        "requestedByUserId": { "type": "string", "maxLength": 128 },
+        "requestedByName": { "type": "string", "maxLength": 100 },
+        "items": { "type": "string", "description": "Lista de itens solicitados e status individual" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["number", "employeeId", "employeeName", "sector", "status", "priority", "justification"]
+    },
+    "EPIDelivery": {
+      "title": "EPIDelivery",
+      "description": "Comprovante eletrônico de entrega de EPI com assinatura digital (NR-6)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "requisitionId": { "type": "string", "maxLength": 128 },
+        "requisitionNumber": { "type": "string", "maxLength": 50 },
+        "employeeId": { "type": "string", "maxLength": 128 },
+        "employeeName": { "type": "string", "maxLength": 150 },
+        "employeeMatricula": { "type": "string", "maxLength": 50 },
+        "sector": { "type": "string", "maxLength": 100 },
+        "deliveredByUserId": { "type": "string", "maxLength": 128 },
+        "deliveredByName": { "type": "string", "maxLength": 100 },
+        "signatureDataUrl": { "type": "string", "description": "Assinatura digitalizada em canvas base64" },
+        "date": { "type": "string", "format": "date-time" },
+        "items": { "type": "string", "description": "Itens e quantidades entregues" },
+        "observations": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["requisitionId", "employeeId", "deliveredByUserId", "date"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Trilha de auditoria imutável de segurança",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userRole": { "type": "string", "maxLength": 50 },
+        "action": { "type": "string", "maxLength": 100 },
+        "entity": { "type": "string", "maxLength": 50 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "ipOrSession": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["timestamp", "userId", "userName", "userRole", "action", "entity"]
+    }
+  },
+  "firestore": {
+    "/materials/{materialId}": {
+      "schema": { "$ref": "entities.Material" },
+      "description": "Itens cadastrados no catálogo do almoxarifado"
+    },
+    "/movements/{movementId}": {
+      "schema": { "$ref": "entities.Movement" },
+      "description": "Movimentações de entrada e saída de estoque"
+    },
+    "/employees/{employeeId}": {
+      "schema": { "$ref": "entities.Employee" },
+      "description": "Funcionários da operação de limpeza urbana"
+    },
+    "/requisitions/{requisitionId}": {
+      "schema": { "$ref": "entities.Requisition" },
+      "description": "Requisições de EPIs e ferramentas emitidas pela segurança do trabalho"
+    },
+    "/epiDeliveries/{deliveryId}": {
+      "schema": { "$ref": "entities.EPIDelivery" },
+      "description": "Comprovantes assinados de entrega de EPIs"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "entities.AuditLog" },
+      "description": "Trilha imutável de auditoria e conformidade"
+    }
+  }
+}

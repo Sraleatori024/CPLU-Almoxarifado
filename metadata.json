@@ -1,0 +1,6 @@
+{
+  "name": "CPLU — Almoxarifado Limpeza Urbana",
+  "description": "Sistema Inteligente de Gestão de Almoxarifado para Limpeza Urbana com controle de materiais, EPIs, requisições de segurança do trabalho, QR Codes e auditoria.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

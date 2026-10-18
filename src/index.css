@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/* Custom Print Styles for Official NR-6 Receipts and QR Labels */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-receipt-area,
+  #printable-receipt-area *,
+  #printable-label-card,
+  #printable-label-card * {
+    visibility: visible;
+  }
+
+  #printable-receipt-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
+
+  #printable-label-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    background: white !important;
+  }
+
+  header,
+  aside,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+}

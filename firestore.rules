@@ -1,0 +1,155 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'administrador') ||
+        request.auth.token.email == 'nickinicolas380@gmail.com'
+      );
+    }
+
+    function isAlmoxarife() {
+      return isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'almoxarife')
+      );
+    }
+
+    function isTecnicoSeguranca() {
+      return isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'tecnico_seguranca')
+      );
+    }
+
+    function isGestorOrAuthorized() {
+      return isSignedIn();
+    }
+
+    // Materials Collection
+    function isValidMaterial(data) {
+      return data.code is string && data.code.size() > 0 && data.code.size() <= 50 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.category is string && data.unit is string &&
+             data.currentStock is number && data.currentStock >= 0 &&
+             data.minStock is number && data.minStock >= 0 &&
+             data.status in ['ativo', 'inativo'];
+    }
+
+    match /materials/{materialId} {
+      allow read: if isGestorOrAuthorized() && isValidId(materialId);
+      allow create: if (isAdmin() || isAlmoxarife()) && isValidId(materialId) && isValidMaterial(incoming());
+      allow update: if (isAdmin() || isAlmoxarife()) && isValidId(materialId) && isValidMaterial(incoming()) &&
+                    incoming().code == existing().code; // Code is immutable
+      allow delete: if isAdmin() && isValidId(materialId);
+    }
+
+    // Movements Collection (Immutable Audit Trail)
+    function isValidMovement(data) {
+      return data.materialId is string && data.materialId.size() <= 128 &&
+             data.type is string &&
+             data.quantity is number && data.quantity > 0 &&
+             data.previousStock is number && data.newStock is number &&
+             data.userId == request.auth.uid;
+    }
+
+    match /movements/{movementId} {
+      allow read: if isGestorOrAuthorized() && isValidId(movementId);
+      allow create: if (isAdmin() || isAlmoxarife()) && isValidId(movementId) && isValidMovement(incoming());
+      allow update, delete: if false; // Movements are strictly immutable
+    }
+
+    // Employees Collection
+    function isValidEmployee(data) {
+      return data.matricula is string && data.matricula.size() > 0 && data.matricula.size() <= 50 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+             data.sector is string && data.role is string &&
+             data.status in ['ativo', 'afastado', 'ferias', 'desligado'];
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isGestorOrAuthorized() && isValidId(employeeId);
+      allow create, update: if (isAdmin() || isTecnicoSeguranca()) && isValidId(employeeId) && isValidEmployee(incoming());
+      allow delete: if isAdmin() && isValidId(employeeId);
+    }
+
+    // Requisitions Collection
+    function isValidRequisition(data) {
+      return data.number is string && data.number.size() <= 50 &&
+             data.employeeId is string && data.employeeId.size() <= 128 &&
+             data.status in ['rascunho', 'enviada', 'pendente', 'parcialmente_atendida', 'atendida', 'cancelada', 'rejeitada'] &&
+             data.priority in ['baixa', 'normal', 'alta', 'critica'];
+    }
+
+    match /requisitions/{requisitionId} {
+      allow read: if isGestorOrAuthorized() && isValidId(requisitionId);
+      allow create: if (isAdmin() || isTecnicoSeguranca()) && isValidId(requisitionId) && isValidRequisition(incoming()) &&
+                    incoming().requestedByUserId == request.auth.uid;
+      allow update: if isValidId(requisitionId) && (
+        isAdmin() ||
+        (isTecnicoSeguranca() && existing().requestedByUserId == request.auth.uid && existing().status in ['rascunho', 'enviada', 'pendente']) ||
+        (isAlmoxarife() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'items', 'updatedAt', 'deliveredCount']))
+      );
+      allow delete: if isAdmin() && isValidId(requisitionId);
+    }
+
+    // EPI Deliveries (NR-6 Electronic Receipt)
+    function isValidEPIDelivery(data) {
+      return data.requisitionId is string && data.employeeId is string &&
+             data.deliveredByUserId == request.auth.uid;
+    }
+
+    match /epiDeliveries/{deliveryId} {
+      allow read: if isGestorOrAuthorized() && isValidId(deliveryId);
+      allow create: if (isAdmin() || isAlmoxarife()) && isValidId(deliveryId) && isValidEPIDelivery(incoming());
+      allow update, delete: if false; // Deliveries cannot be altered or deleted once registered
+    }
+
+    // Shelves / Locations
+    match /shelves/{shelfId} {
+      allow read: if isGestorOrAuthorized() && isValidId(shelfId);
+      allow write: if (isAdmin() || isAlmoxarife()) && isValidId(shelfId);
+    }
+
+    // Audit Logs (Immutable)
+    match /auditLogs/{logId} {
+      allow read: if (isAdmin() || isGestorOrAuthorized()) && isValidId(logId);
+      allow create: if isSignedIn() && isValidId(logId) && incoming().userId == request.auth.uid;
+      allow update, delete: if false; // Audit logs can never be modified or deleted
+    }
+
+    // User Accounts & Roles
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create, update, delete: if isAdmin() && isValidId(userId);
+    }
+  }
+}

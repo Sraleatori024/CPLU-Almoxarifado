@@ -19,12 +19,14 @@ import {
   BadgeAlert,
   ArrowRight,
   ShieldCheck,
+  MapPin,
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import {
   Requisition,
   Material,
   Employee,
+  Region,
   RequisitionPriority,
   RequisitionStatus,
 } from '../types';
@@ -47,19 +49,23 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
 
   // Search and status filter for the tracker
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
 
-  // New Requisition Form State
+  // New Requisition Form State - Simplified as requested
+  const [customRequisitionNumber, setCustomRequisitionNumber] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [priority, setPriority] = useState<RequisitionPriority>('alta');
+  const [selectedRegionId, setSelectedRegionId] = useState('');
+  const [priority, setPriority] = useState<RequisitionPriority>('normal');
   const [justification, setJustification] = useState('');
   const [observations, setObservations] = useState('');
   const [items, setItems] = useState<{ materialId: string; quantity: number }[]>([
     { materialId: '', quantity: 1 },
   ]);
+  const [epiSearchTerm, setEpiSearchTerm] = useState('');
 
   // Action status feedback
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,6 +81,7 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
     setRequisitions(dbService.getRequisitions());
     setMaterials(dbService.getMaterials().filter((m) => m.status === 'ativo'));
     setEmployees(dbService.getEmployees().filter((e) => e.status === 'ativo'));
+    setRegions(dbService.getRegions().filter((r) => r.active));
   };
 
   useEffect(() => {
@@ -85,9 +92,19 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
 
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
 
+  // Sync region when employee changes if not already set
+  const handleSelectEmployee = (empId: string) => {
+    setSelectedEmployeeId(empId);
+    const emp = employees.find((e) => e.id === empId);
+    if (emp && emp.regionId) {
+      setSelectedRegionId(emp.regionId);
+    }
+  };
+
   // Add and remove items in requisition builder
-  const handleAddItem = () => {
-    setItems([...items, { materialId: materials[0]?.id || '', quantity: 1 }]);
+  const handleAddItem = (materialIdToSelect?: string) => {
+    const idToAdd = materialIdToSelect || materials[0]?.id || '';
+    setItems([...items, { materialId: idToAdd, quantity: 1 }]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -112,14 +129,9 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
       return;
     }
 
-    if (!isDraft && (!justification.trim() || justification.trim().length < 5)) {
-      setFormError('A justificativa técnica do TST é obrigatória para envio ao almoxarifado.');
-      return;
-    }
-
     const validItems = items.filter((i) => i.materialId && i.quantity > 0);
     if (validItems.length === 0) {
-      setFormError('Adicione pelo menos um EPI/Material com quantidade válida.');
+      setFormError('Adicione pelo menos um EPI com quantidade válida.');
       return;
     }
 
@@ -127,9 +139,11 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
     try {
       const res = dbService.createRequisition(
         {
+          requisitionNumber: customRequisitionNumber.trim() || undefined,
           employeeId: selectedEmployeeId,
+          regionId: selectedRegionId || undefined,
           priority,
-          justification: justification.trim() || 'Rascunho de requisição técnica',
+          justification: justification.trim() || 'Requisição técnica de EPIs',
           observations: observations.trim() || undefined,
           isDraft,
           items: validItems.map((i) => ({
@@ -151,9 +165,11 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
         setFormSuccess(res.message);
         // Reset form
         setSelectedEmployeeId('');
+        setSelectedRegionId('');
+        setCustomRequisitionNumber('');
         setJustification('');
         setObservations('');
-        setPriority('alta');
+        setPriority('normal');
         setItems([{ materialId: materials[0]?.id || '', quantity: 1 }]);
         setTimeout(() => setFormSuccess(null), 4000);
       }
@@ -336,6 +352,23 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
               </span>
             </div>
 
+            {/* Official Company Requisition Number */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-bold text-slate-800">
+                  Nº da Requisição da Empresa (Controle Interno)
+                </label>
+                <span className="text-[10px] text-slate-400">Opcional - preserva numeração oficial</span>
+              </div>
+              <input
+                type="text"
+                value={customRequisitionNumber}
+                onChange={(e) => setCustomRequisitionNumber(e.target.value)}
+                placeholder="Ex: REQ-2026-0045 ou 10492/2026 (ou deixe vazio para sequencial)"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-mono uppercase focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+              />
+            </div>
+
             {/* Employee Select */}
             <div>
               <label className="block font-bold text-slate-800 mb-1">
@@ -343,13 +376,13 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
               </label>
               <select
                 value={selectedEmployeeId}
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                onChange={(e) => handleSelectEmployee(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
               >
-                <option value="">Selecione o colaborador...</option>
+                <option value="">Selecione o colaborador cadastrado...</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.matricula} — {emp.name} ({emp.sector})
+                    {emp.matricula} — {emp.name} ({emp.sector} • {emp.regionName || 'Paulista'})
                   </option>
                 ))}
               </select>
@@ -374,8 +407,27 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
               </div>
             )}
 
-            {/* Priority & Date */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Region & Priority */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                  Região Operacional *
+                </label>
+                <select
+                  value={selectedRegionId}
+                  onChange={(e) => setSelectedRegionId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
+                >
+                  <option value="">Selecione a região...</option>
+                  {regions.map((reg) => (
+                    <option key={reg.id} value={reg.id}>
+                      {reg.name} ({reg.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block font-bold text-slate-800 mb-1">Prioridade *</label>
                 <select
@@ -383,39 +435,80 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
                   onChange={(e) => setPriority(e.target.value as RequisitionPriority)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-hidden bg-white"
                 >
-                  <option value="critica">Crítica (Substituição Imediata)</option>
-                  <option value="alta">Alta</option>
                   <option value="normal">Normal</option>
+                  <option value="alta">Alta</option>
+                  <option value="critica">Crítica (Imediata)</option>
                   <option value="baixa">Baixa</option>
                 </select>
               </div>
-
-              <div>
-                <label className="block font-bold text-slate-800 mb-1">Data da Solicitação</label>
-                <input
-                  type="text"
-                  disabled
-                  value={new Date().toLocaleDateString('pt-BR')}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-100 font-mono text-slate-600"
-                />
-              </div>
             </div>
 
-            {/* Multi-Item Selector */}
+            {/* Quick EPI Search and Multi-Item Selector */}
             <div className="space-y-2 pt-2 border-t border-slate-200">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                  EPIs & Materiais Solicitados
+                  EPIs Solicitados (Pesquise e Adicione)
                 </label>
                 <button
                   type="button"
-                  onClick={handleAddItem}
+                  onClick={() => handleAddItem()}
                   className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Adicionar Item
+                  <Plus className="w-3.5 h-3.5" /> Adicionar Outro Item
                 </button>
               </div>
 
+              {/* EPI Search input to filter or quick-add */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  value={epiSearchTerm}
+                  onChange={(e) => setEpiSearchTerm(e.target.value)}
+                  placeholder="Pesquisar EPI por nome, código ou CA para agilizar..."
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Quick suggestions when typing in search */}
+              {epiSearchTerm.trim().length > 1 && (
+                <div className="p-2 bg-emerald-50/50 border border-emerald-200 rounded-xl max-h-36 overflow-y-auto space-y-1">
+                  <div className="text-[10px] font-bold text-emerald-900 uppercase">Resultados da pesquisa:</div>
+                  {materials
+                    .filter(
+                      (m) =>
+                        m.name.toLowerCase().includes(epiSearchTerm.toLowerCase()) ||
+                        m.code.toLowerCase().includes(epiSearchTerm.toLowerCase()) ||
+                        (m.caNumber && m.caNumber.includes(epiSearchTerm))
+                    )
+                    .slice(0, 5)
+                    .map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          handleAddItem(m.id);
+                          setEpiSearchTerm('');
+                        }}
+                        className="p-1.5 bg-white hover:bg-emerald-100/70 border border-emerald-200 rounded-lg flex items-center justify-between cursor-pointer transition text-[11px]"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-900">{m.name}</span>
+                          <span className="text-slate-500 font-mono ml-2">({m.code})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-emerald-700 font-bold">
+                            Disp: {m.currentStock} {m.unit}
+                          </span>
+                          <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold">
+                            + Incluir
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              {/* Items List */}
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {items.map((it, idx) => {
                   const mat = materials.find((m) => m.id === it.materialId);
@@ -482,7 +575,7 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
                                 : 'text-emerald-700'
                             }`}
                           >
-                            Estoque disponível no almoxarifado: {mat.currentStock} {mat.unit}
+                            Estoque disponível: {mat.currentStock} {mat.unit}
                           </span>
                         </div>
                       )}
@@ -492,35 +585,21 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
               </div>
             </div>
 
-            {/* Technical Justification */}
+            {/* Observations (Optional) */}
             <div>
               <label className="block font-bold text-slate-800 mb-1">
-                Justificativa Técnica do TST *
-              </label>
-              <textarea
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-                rows={2}
-                placeholder="Ex: Troca periódica de luvas danificadas ou fornecimento para início em nova rota viária."
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
-              />
-            </div>
-
-            {/* Observations */}
-            <div>
-              <label className="block font-bold text-slate-800 mb-1">
-                Observações para a Equipe do Almoxarifado
+                Observações Opcionais para o Almoxarifado
               </label>
               <input
                 type="text"
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
-                placeholder="Instruções de entrega ou horário de liberação..."
+                placeholder="Ex: Entrega prioritária antes do turno matutino de varrição..."
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
               />
             </div>
 
-            {/* Two Action Buttons: Draft vs Real Send */}
+            {/* Action Buttons: Draft vs Immediate Send */}
             <div className="pt-3 border-t border-slate-200 flex gap-2">
               <button
                 type="button"

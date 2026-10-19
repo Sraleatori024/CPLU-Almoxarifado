@@ -832,29 +832,40 @@ export const MaterialsPage: React.FC<MaterialsPageProps> = ({ initialSearchCode 
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Localização Física
-                  </label>
-                  <input
-                    type="text"
-                    value={formLocation}
-                    onChange={(e) => setFormLocation(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-hidden"
-                  />
+              {/* Physical Location Fields: Galpão, Corredor, Prateleira, Nível */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                  Endereçamento Físico no Almoxarifado (Editável)
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                      Galpão / Área
+                    </label>
+                    <input
+                      type="text"
+                      value={formLocation}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      placeholder="Ex: Galpão A - Almoxarifado Central"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 focus:outline-hidden bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                      Prateleira / Posição (Código QR)
+                    </label>
+                    <input
+                      type="text"
+                      value={formShelf}
+                      onChange={(e) => setFormShelf(e.target.value.toUpperCase())}
+                      placeholder="Ex: PRAT-EPI-01, Corredor 2 / Nível 1"
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg uppercase font-mono font-bold text-xs focus:ring-2 focus:ring-orange-500 focus:outline-hidden bg-white"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Prateleira / Baia
-                  </label>
-                  <input
-                    type="text"
-                    value={formShelf}
-                    onChange={(e) => setFormShelf(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg uppercase font-mono focus:ring-2 focus:ring-orange-500 focus:outline-hidden"
-                  />
-                </div>
+                <p className="text-[10px] text-slate-400 italic">
+                  Informe o galpão, corredor, prateleira, nível ou andar para contagem física e etiquetagem QR.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">

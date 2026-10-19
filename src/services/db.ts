@@ -1382,9 +1382,12 @@ export const dbService = {
 
   createRequisition(
     data: {
+      requisitionNumber?: string;
       employeeId: string;
+      regionId?: string;
+      regionName?: string;
       priority: Requisition['priority'];
-      justification: string;
+      justification?: string;
       observations?: string;
       items: { materialId: string; quantityRequested: number }[];
       isDraft?: boolean;
@@ -1425,12 +1428,34 @@ export const dbService = {
     }
 
     const requisitions = this.getRequisitions();
-    const year = new Date().getFullYear();
-    const nextSeq = String(requisitions.length + 1).padStart(4, '0');
-    const reqNumber = `REQ-${year}-${nextSeq}`;
+    let reqNumber = data.requisitionNumber?.trim();
+
+    if (reqNumber) {
+      const exists = requisitions.some(
+        (r) => r.number.toUpperCase() === reqNumber!.toUpperCase()
+      );
+      if (exists) {
+        return {
+          success: false,
+          message: `Já existe uma requisição cadastrada com o número ${reqNumber}. Verifique o número original da empresa.`,
+        };
+      }
+    } else {
+      const year = new Date().getFullYear();
+      const nextSeq = String(requisitions.length + 1).padStart(4, '0');
+      reqNumber = `REQ-${year}-${nextSeq}`;
+    }
 
     const now = new Date().toISOString();
     const status: Requisition['status'] = data.isDraft ? 'rascunho' : 'enviada';
+
+    // Resolve region
+    let resolvedRegionId = data.regionId || emp.regionId;
+    let resolvedRegionName = data.regionName || emp.regionName;
+    if (!resolvedRegionName && resolvedRegionId) {
+      const regObj = this.getRegions().find((r) => r.id === resolvedRegionId);
+      if (regObj) resolvedRegionName = regObj.name;
+    }
 
     const newReq: Requisition = {
       id: 'req-' + Math.random().toString(36).substring(2, 9),
@@ -1439,11 +1464,11 @@ export const dbService = {
       employeeName: emp.name,
       employeeMatricula: emp.matricula,
       sector: emp.sector,
-      regionId: emp.regionId,
-      regionName: emp.regionName,
+      regionId: resolvedRegionId,
+      regionName: resolvedRegionName,
       status,
       priority: data.priority,
-      justification: data.justification,
+      justification: data.justification?.trim() || 'Requisição técnica de EPIs / Materiais',
       observations: data.observations,
       requestedByUserId: user.id,
       requestedByName: user.name,

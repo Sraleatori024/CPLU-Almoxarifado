@@ -17,6 +17,7 @@ import {
   PackageCheck,
   Bell,
   RefreshCw,
+  MapPin,
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { Requisition, Material, EPIDelivery } from '../types';
@@ -32,10 +33,12 @@ import {
 
 interface AlmoxarifadoDashboardPageProps {
   onNavigateToTechnician?: () => void;
+  onNavigateToDirectExit?: () => void;
 }
 
 export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps> = ({
   onNavigateToTechnician,
+  onNavigateToDirectExit,
 }) => {
   const { currentUser, role, canFulfillRequisitions } = useAuth();
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -50,6 +53,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
   const [deliveredQuantities, setDeliveredQuantities] = useState<Record<string, number>>({});
   const [signatureData, setSignatureData] = useState('');
   const [observations, setObservations] = useState('');
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   // Status message
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,6 +84,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
     setActiveFulfillReq(req);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setShowCloseConfirm(false);
 
     // Default each item's quantity to deliver to the remaining needed (capped by stock)
     const initialQty: Record<string, number> = {};
@@ -95,11 +100,43 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
   };
 
   const handleQuantityChange = (itemId: string, val: number, maxAllowed: number, stock: number) => {
+    setErrorMsg(null);
+    if (val > stock) {
+      setErrorMsg(`Aviso: Estoque insuficiente! O saldo físico no almoxarifado é de ${stock} unidades. Não é permitido saldo negativo.`);
+    } else if (val > maxAllowed) {
+      setErrorMsg(`Aviso: A quantidade não pode exceder o saldo pendente solicitado (${maxAllowed}).`);
+    }
     const valid = Math.max(0, Math.min(val, maxAllowed, stock));
     setDeliveredQuantities((prev) => ({
       ...prev,
       [itemId]: valid,
     }));
+  };
+
+  const isFormDirty = () => {
+    if (successMsg) return false;
+    const hasNonZero = Object.values(deliveredQuantities).some((q) => q > 0);
+    const hasSig = !!signatureData;
+    const hasObs = !!observations.trim();
+    return hasNonZero || hasSig || hasObs;
+  };
+
+  const handleRequestClose = () => {
+    if (isFormDirty()) {
+      setShowCloseConfirm(true);
+    } else {
+      handleForceClose();
+    }
+  };
+
+  const handleForceClose = () => {
+    setShowCloseConfirm(false);
+    setActiveFulfillReq(null);
+    setDeliveredQuantities({});
+    setSignatureData('');
+    setObservations('');
+    setErrorMsg(null);
+    setSuccessMsg(null);
   };
 
   // Confirm delivery
@@ -350,14 +387,25 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             )}
           </div>
 
-          {onNavigateToTechnician && (
-            <button
-              onClick={onNavigateToTechnician}
-              className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
-            >
-              Acessar Painel do TST <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onNavigateToDirectExit && (
+              <button
+                onClick={onNavigateToDirectExit}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-300 shadow-2xs"
+              >
+                <Boxes className="w-3.5 h-3.5 text-orange-600" />
+                Saída Avulsa Sem Requisição
+              </button>
+            )}
+            {onNavigateToTechnician && (
+              <button
+                onClick={onNavigateToTechnician}
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 px-2 py-1"
+              >
+                Acessar Painel do TST <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -365,7 +413,8 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             <thead className="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Número da Requisição</th>
-                <th className="py-3 px-4">Técnico Emitente (TST)</th>
+                <th className="py-3 px-4">Região</th>
+                <th className="py-3 px-4">Técnico (TST)</th>
                 <th className="py-3 px-4">Funcionário & Setor</th>
                 <th className="py-3 px-4">Itens Solicitados / Faltantes</th>
                 <th className="py-3 px-4 text-center">Prioridade</th>
@@ -376,7 +425,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             <tbody className="divide-y divide-slate-100">
               {filteredRequisitions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">Nenhuma requisição na fila com os filtros atuais.</p>
                   </td>
@@ -408,6 +457,13 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                         <div className="text-[10px] text-slate-400 font-mono">
                           {req.sentAt ? formatDateTimeBR(req.sentAt) : formatDateBR(req.createdAt)}
                         </div>
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl text-[11px]">
+                          <MapPin className="w-3 h-3 text-amber-600" />
+                          {req.regionName || 'Paulista'}
+                        </span>
                       </td>
 
                       <td className="py-3 px-4">
@@ -495,10 +551,12 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
               </div>
 
               <button
-                onClick={() => setActiveFulfillReq(null)}
-                className="p-1.5 hover:bg-white/20 rounded-lg text-slate-400 hover:text-white"
+                type="button"
+                onClick={handleRequestClose}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition border border-white/20"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
+                Fechar
               </button>
             </div>
 
@@ -529,23 +587,31 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                 </div>
               )}
 
-              {/* Employee Check Card */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+              {/* Employee & Region Check Card */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
                     Conferência de Identidade do Destinatário:
                   </span>
-                  <span className="font-bold text-sm text-slate-900">
+                  <span className="font-bold text-sm text-slate-900 block">
                     {activeFulfillReq.employeeName}
                   </span>
-                  <div className="text-slate-500 font-mono text-[11px] mt-0.5">
-                    Matrícula: {activeFulfillReq.employeeMatricula} • Setor: {activeFulfillReq.sector}
+                  <div className="text-slate-500 font-mono text-[11px] mt-0.5 flex flex-wrap gap-2">
+                    <span>Matrícula: {activeFulfillReq.employeeMatricula}</span>
+                    <span>• Setor: {activeFulfillReq.sector}</span>
+                    <span className="text-amber-800 font-bold bg-amber-100/70 px-1.5 py-0.2 rounded flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      Região: {activeFulfillReq.regionName || 'Paulista'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">ALMOXARIFE RESPONSÁVEL:</span>
                   <span className="font-bold text-slate-800">{currentUser?.name}</span>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    Pedido em: {formatDateTimeBR(activeFulfillReq.sentAt || activeFulfillReq.createdAt)}
+                  </div>
                 </div>
               </div>
 
@@ -679,10 +745,10 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setActiveFulfillReq(null)}
+                    onClick={handleRequestClose}
                     className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-100"
                   >
-                    Voltar
+                    Voltar ao Painel
                   </button>
                   <button
                     type="submit"
@@ -699,6 +765,41 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM CLOSE WITH UNSAVED DATA MODAL */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-black text-slate-900 text-center mb-2">
+              Descartar alterações deste atendimento?
+            </h3>
+            <p className="text-xs text-slate-600 text-center mb-5 leading-relaxed">
+              Existem quantidades ou dados digitados que ainda não foram confirmados. Se fechar agora, as informações preenchidas nesta tela serão descartadas.
+              <br /><br />
+              <strong className="text-slate-800">Nota de Segurança:</strong> Atendimentos e baixas de estoque que já foram confirmados anteriormente permanecem salvos no sistema e nunca serão cancelados ou apagados.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirm(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition"
+              >
+                Continuar Atendimento
+              </button>
+              <button
+                type="button"
+                onClick={handleForceClose}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+              >
+                Sim, Fechar sem Salvar
+              </button>
+            </div>
           </div>
         </div>
       )}

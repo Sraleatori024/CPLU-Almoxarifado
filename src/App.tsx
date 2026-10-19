@@ -136,6 +136,7 @@ function AppContent() {
           {currentTab === 'almoxarifado_panel' && (
             <AlmoxarifadoDashboardPage
               onNavigateToTechnician={() => handleNavigate('tecnico_panel')}
+              onNavigateToDirectExit={() => handleNavigate('movements')}
             />
           )}
 

@@ -12,7 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { dbService } from '../services/db';
-import { Material, Movement, Requisition, EPIDelivery, Employee } from '../types';
+import { Material, Movement, Requisition, EPIDelivery, Employee, Region } from '../types';
 import {
   formatDateTimeBR,
   formatDateBR,
@@ -22,6 +22,7 @@ import {
 } from '../utils/formatters';
 
 type ReportType =
+  | 'consumo_regiao'
   | 'saldo_geral'
   | 'consumo_setor'
   | 'movimentacoes'
@@ -29,13 +30,17 @@ type ReportType =
   | 'estoque_critico';
 
 export const ReportsPage: React.FC = () => {
-  const [reportType, setReportType] = useState<ReportType>('saldo_geral');
+  const [reportType, setReportType] = useState<ReportType>('consumo_regiao');
   const [materials, setMaterials] = useState<Material[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [deliveries, setDeliveries] = useState<EPIDelivery[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
 
   // Filter state
+  const [selectedRegion, setSelectedRegion] = useState<string>('todos');
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('todos');
+  const [selectedMaterialCode, setSelectedMaterialCode] = useState<string>('todos');
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [selectedSector, setSelectedSector] = useState<string>('todos');
   const [startDate, setStartDate] = useState<string>('2026-01-01');
@@ -46,6 +51,7 @@ export const ReportsPage: React.FC = () => {
     setMovements(dbService.getMovements());
     setDeliveries(dbService.getEPIDeliveries());
     setEmployees(dbService.getEmployees());
+    setRegions(dbService.getRegions());
   };
 
   useEffect(() => {
@@ -55,22 +61,38 @@ export const ReportsPage: React.FC = () => {
   }, []);
 
   // Filtered dataset
-  const filteredMaterials = materials.filter(
-    (m) => selectedCategory === 'todos' || m.category === selectedCategory
-  );
+  const filteredMaterials = materials.filter((m) => {
+    const matchCat = selectedCategory === 'todos' || m.category === selectedCategory;
+    const matchCode = selectedMaterialCode === 'todos' || m.code === selectedMaterialCode;
+    return matchCat && matchCode;
+  });
 
   const filteredMovements = movements.filter((m) => {
     const d = m.date.slice(0, 10);
     const inRange = (!startDate || d >= startDate) && (!endDate || d <= endDate);
     const matchSector = selectedSector === 'todos' || m.sector === selectedSector;
-    return inRange && matchSector;
+    const matchRegion =
+      selectedRegion === 'todos' ||
+      m.regionId === selectedRegion ||
+      m.regionName?.toLowerCase() === selectedRegion.toLowerCase();
+    const matchEmployee = selectedEmployeeId === 'todos' || m.employeeId === selectedEmployeeId;
+    const matchMaterial = selectedMaterialCode === 'todos' || m.materialCode === selectedMaterialCode;
+
+    let matchCategory = true;
+    if (selectedCategory !== 'todos') {
+      const mat = materials.find((matItem) => matItem.code === m.materialCode);
+      matchCategory = mat ? mat.category === selectedCategory : true;
+    }
+
+    return inRange && matchSector && matchRegion && matchEmployee && matchMaterial && matchCategory;
   });
 
   const filteredDeliveries = deliveries.filter((d) => {
     const day = d.date.slice(0, 10);
     const inRange = (!startDate || day >= startDate) && (!endDate || day <= endDate);
     const matchSector = selectedSector === 'todos' || d.sector === selectedSector;
-    return inRange && matchSector;
+    const matchEmployee = selectedEmployeeId === 'todos' || d.employeeId === selectedEmployeeId;
+    return inRange && matchSector && matchEmployee;
   });
 
   const criticalMaterials = materials.filter(
@@ -90,9 +112,82 @@ export const ReportsPage: React.FC = () => {
       consumptionBySector[sector].totalQuantity += m.quantity;
     });
 
+  // Aggregated consumption by region
+  const consumptionByRegion: Record<
+    string,
+    {
+      regionName: string;
+      totalUnits: number;
+      deliveriesCount: number;
+      products: Record<string, { code: string; name: string; qty: number; cat: string }>;
+    }
+  > = {};
+
+  filteredMovements
+    .filter((m) => m.type.startsWith('SAIDA_'))
+    .forEach((m) => {
+      const regName = m.regionName || 'Paulista';
+      if (!consumptionByRegion[regName]) {
+        consumptionByRegion[regName] = {
+          regionName: regName,
+          totalUnits: 0,
+          deliveriesCount: 0,
+          products: {},
+        };
+      }
+      consumptionByRegion[regName].totalUnits += m.quantity;
+      consumptionByRegion[regName].deliveriesCount += 1;
+
+      if (!consumptionByRegion[regName].products[m.materialCode]) {
+        const mat = materials.find((it) => it.code === m.materialCode);
+        consumptionByRegion[regName].products[m.materialCode] = {
+          code: m.materialCode,
+          name: m.materialName,
+          qty: 0,
+          cat: mat ? mat.category : 'Consumíveis',
+        };
+      }
+      consumptionByRegion[regName].products[m.materialCode].qty += m.quantity;
+    });
+
   // Export handlers
   const handleExportCSV = () => {
-    if (reportType === 'saldo_geral') {
+    if (reportType === 'consumo_regiao') {
+      const rows: (string | number)[][] = [
+        [
+          'Data/Hora',
+          'Nº Requisição',
+          'Região Operacional',
+          'Colaborador Destinatário',
+          'Matrícula',
+          'Setor',
+          'Código Produto',
+          'Descrição Produto',
+          'Categoria',
+          'Quantidade Entregue',
+          'Responsável Almoxarifado',
+        ],
+      ];
+      filteredMovements
+        .filter((m) => m.type.startsWith('SAIDA_'))
+        .forEach((m) => {
+          const mat = materials.find((it) => it.code === m.materialCode);
+          rows.push([
+            formatDateTimeBR(m.date),
+            m.requisitionNumber || 'N/A',
+            m.regionName || 'Paulista',
+            m.employeeName || 'Balcão Geral',
+            m.employeeMatricula || 'N/A',
+            m.sector || '-',
+            m.materialCode,
+            m.materialName,
+            mat ? mat.category : 'Consumíveis',
+            m.quantity,
+            m.userName,
+          ]);
+        });
+      exportToCSV(`CPLU_Consumo_Regioes_${startDate}_a_${endDate}`, rows);
+    } else if (reportType === 'saldo_geral') {
       const rows: (string | number)[][] = [
         ['Código', 'Material', 'Categoria', 'Unidade', 'Saldo Atual', 'Estoque Mínimo', 'Posição', 'Situação'],
       ];
@@ -202,6 +297,7 @@ export const ReportsPage: React.FC = () => {
       {/* Report Types Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
         {[
+          { id: 'consumo_regiao', label: 'Consumo por Região & Período' },
           { id: 'saldo_geral', label: 'Saldo Físico Geral' },
           { id: 'consumo_setor', label: 'Consumo por Equipe / Setor' },
           { id: 'movimentacoes', label: 'Movimentações Auditadas' },
@@ -225,6 +321,7 @@ export const ReportsPage: React.FC = () => {
       {/* Filter toolbar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
+          {/* Período */}
           <div className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-slate-400" />
             <span className="font-semibold text-slate-600">Período:</span>
@@ -243,6 +340,24 @@ export const ReportsPage: React.FC = () => {
             />
           </div>
 
+          {/* Região Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-slate-600">Região:</span>
+            <select
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
+              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold"
+            >
+              <option value="todos">Todas as Regiões</option>
+              {regions.map((rg) => (
+                <option key={rg.id} value={rg.id}>
+                  {rg.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Categoria */}
           <div className="flex items-center gap-1.5">
             <span className="font-semibold text-slate-600">Categoria:</span>
             <select
@@ -255,23 +370,42 @@ export const ReportsPage: React.FC = () => {
               <option value="Ferramental">Ferramental</option>
               <option value="Uniformes">Uniformes</option>
               <option value="Químicos & Limpeza">Químicos & Limpeza</option>
+              <option value="Consumíveis">Consumíveis</option>
               <option value="Sinalização">Sinalização</option>
             </select>
           </div>
 
+          {/* Funcionário Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-slate-600">Setor:</span>
+            <span className="font-semibold text-slate-600">Funcionário:</span>
             <select
-              value={selectedSector}
-              onChange={(e) => setSelectedSector(e.target.value)}
-              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs max-w-xs"
             >
-              <option value="todos">Todos os Setores</option>
-              <option value="Varrição Central">Varrição Central</option>
-              <option value="Coleta Domiciliar">Coleta Domiciliar</option>
-              <option value="Capina & Roçagem">Capina & Roçagem</option>
-              <option value="Coleta Seletiva">Coleta Seletiva</option>
-              <option value="Manutenção de Frota">Manutenção de Frota</option>
+              <option value="todos">Todos os Funcionários</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.matricula} - {emp.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Produto Filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-slate-600">Produto:</span>
+            <select
+              value={selectedMaterialCode}
+              onChange={(e) => setSelectedMaterialCode(e.target.value)}
+              className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs max-w-xs"
+            >
+              <option value="todos">Todos os Produtos</option>
+              {materials.map((m) => (
+                <option key={m.id} value={m.code}>
+                  {m.code} - {m.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -291,6 +425,7 @@ export const ReportsPage: React.FC = () => {
               </h2>
             </div>
             <p className="text-xs text-slate-500 uppercase font-semibold mt-1">
+              {reportType === 'consumo_regiao' && 'Consumo Consolidado por Região & Período (EPIs, Ferramental e Limpeza)'}
               {reportType === 'saldo_geral' && 'Posição Físico-Estoque e Catálogo'}
               {reportType === 'consumo_setor' && 'Consumo Operacional Consolidado por Setor'}
               {reportType === 'movimentacoes' && 'Trilha de Movimentações de Entrada e Saída'}
@@ -303,6 +438,83 @@ export const ReportsPage: React.FC = () => {
             <div className="font-mono text-[10px]">Período: {formatDateBR(startDate)} a {formatDateBR(endDate)}</div>
           </div>
         </div>
+
+        {/* 0. Consumo por Região & Período */}
+        {reportType === 'consumo_regiao' && (
+          <div className="space-y-6">
+            {/* Regional Totals Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {Object.values(consumptionByRegion).map((reg) => (
+                <div key={reg.regionName} className="p-4 rounded-xl border border-orange-200 bg-orange-50/40 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <span className="font-extrabold text-sm text-slate-900">{reg.regionName}</span>
+                    <span className="text-xl font-black text-orange-600 font-mono">
+                      {formatNumberBR(reg.totalUnits)} un
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-500 block">
+                    {reg.deliveriesCount} entregas registradas
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Matrix of items delivered by region */}
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
+                <tr>
+                  <th className="py-2.5 px-3">Data/Hora</th>
+                  <th className="py-2.5 px-3">Nº Requisição</th>
+                  <th className="py-2.5 px-3">Região</th>
+                  <th className="py-2.5 px-3">Colaborador Destinatário</th>
+                  <th className="py-2.5 px-3">Material / Código</th>
+                  <th className="py-2.5 px-3">Categoria</th>
+                  <th className="py-2.5 px-3 text-center">Qtd Entregue</th>
+                  <th className="py-2.5 px-3">Almoxarife</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredMovements
+                  .filter((m) => m.type.startsWith('SAIDA_'))
+                  .map((mov) => {
+                    const mat = materials.find((it) => it.code === mov.materialCode);
+                    return (
+                      <tr key={mov.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 font-mono text-[11px] text-slate-500">
+                          {formatDateTimeBR(mov.date)}
+                        </td>
+                        <td className="py-2 px-3 font-mono font-bold text-orange-700">
+                          {mov.requisitionNumber || 'Saída Avulsa'}
+                        </td>
+                        <td className="py-2 px-3 font-bold text-slate-900">
+                          {mov.regionName || 'Paulista'}
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="font-bold text-slate-900">{mov.employeeName || 'Balcão'}</div>
+                          <span className="font-mono text-[10px] text-slate-400">
+                            Mat: {mov.employeeMatricula || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="font-semibold text-slate-900">{mov.materialName}</div>
+                          <span className="font-mono text-[10px] text-orange-700">{mov.materialCode}</span>
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 font-bold text-slate-700">
+                            {mat ? mat.category : 'Consumíveis'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-center font-mono font-black text-slate-900 text-sm">
+                          {mov.quantity}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">{mov.userName}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* 1. Saldo Geral */}
         {reportType === 'saldo_geral' && (

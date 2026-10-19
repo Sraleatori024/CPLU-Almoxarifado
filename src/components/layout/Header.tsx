@@ -48,15 +48,15 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs">
       {/* Top Demo Banner if demo data is active */}
       {isDemo && (
-        <div className="bg-amber-500 text-slate-900 px-4 py-1 text-xs font-semibold flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Ambiente com Dados de Demonstração CPLU</span>
+        <div className="bg-amber-500 text-slate-900 px-3 sm:px-4 py-1.5 sm:py-1 text-[11px] sm:text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Ambiente de Demonstração CPLU</span>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowDemoModal(true)}
-              className="text-[11px] underline hover:text-black font-bold transition"
+              className="text-[10px] sm:text-[11px] underline hover:text-black font-bold transition text-left"
             >
               Gerenciar Base de Dados (Limpar / Restaurar)
             </button>
@@ -64,29 +64,29 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 max-w-full">
         {/* Left: Mobile Toggle & Brand */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <button
             onClick={onToggleSidebar}
-            className="p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg lg:hidden transition"
+            className="p-1.5 sm:p-2 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg lg:hidden transition shrink-0"
             aria-label="Abrir Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-orange-500/20">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white font-black text-base sm:text-xl shadow-md shadow-orange-500/20 shrink-0">
               C
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg text-slate-900 tracking-tight">CPLU</span>
-                <span className="text-xs bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded border border-orange-200">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">CPLU</span>
+                <span className="text-[10px] sm:text-xs bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded border border-orange-200 truncate">
                   Almoxarifado
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider hidden sm:block">
+              <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider hidden sm:block truncate">
                 Operação de Limpeza Urbana
               </p>
             </div>
@@ -110,20 +110,20 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right: Actions, Scanner & Profile */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Mobile search button */}
           <button
             onClick={onOpenSearch}
-            className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg md:hidden"
+            className="p-1.5 sm:p-2 text-slate-600 hover:bg-slate-100 rounded-lg md:hidden"
             title="Buscar"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
 
           {/* Quick QR Scanner Button */}
           <button
             onClick={onOpenQRScanner}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-xs font-semibold transition shadow-2xs"
+            className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 rounded-lg text-xs font-semibold transition shadow-2xs shrink-0"
             title="Abrir Câmera para Leitura de QR Code"
           >
             <QrCode className="w-4 h-4 text-orange-600" />
@@ -133,12 +133,12 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Notifications Button */}
           <button
             onClick={onOpenNotifications}
-            className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition"
+            className="relative p-1.5 sm:p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition shrink-0"
             title="Alertas e Notificações"
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
             {unreadAlertCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+              <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 w-4 h-4 bg-rose-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
                 {unreadAlertCount > 9 ? '9+' : unreadAlertCount}
               </span>
             )}
@@ -148,7 +148,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowRoleMenu(!showRoleMenu)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 text-xs transition"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 text-xs transition shrink-0"
               title="Alternar Perfil para Testes"
             >
               <Shield className="w-3.5 h-3.5 text-orange-600" />
@@ -160,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Role dropdown */}
             {showRoleMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-1.5 border-b border-slate-100">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     Simular Perfil de Acesso:

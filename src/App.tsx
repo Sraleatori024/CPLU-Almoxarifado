@@ -95,7 +95,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col antialiased selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-slate-100/70 font-sans text-slate-800 flex flex-col antialiased selection:bg-orange-500 selection:text-white max-w-full overflow-x-hidden">
       {/* Header */}
       <Header
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
@@ -106,7 +106,7 @@ function AppContent() {
       />
 
       {/* Main Layout */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex max-w-7xl w-full mx-auto min-w-0">
         {/* Navigation Sidebar */}
         <Sidebar
           currentTab={currentTab}
@@ -119,7 +119,7 @@ function AppContent() {
         />
 
         {/* Content Viewport */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 px-2.5 py-3.5 sm:px-4 sm:py-5 md:p-6 lg:p-8 max-w-full overflow-x-hidden">
           {currentTab === 'dashboard' && (
             <DashboardPage
               onNavigate={handleNavigate}

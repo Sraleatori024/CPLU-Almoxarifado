@@ -8,7 +8,6 @@ import {
   AlertTriangle,
   ArrowRight,
   ShieldCheck,
-  User,
   Radio,
   Printer,
   Sparkles,
@@ -18,12 +17,18 @@ import {
   Bell,
   RefreshCw,
   MapPin,
+  Tag,
+  QrCode,
+  Camera,
 } from 'lucide-react';
 import { dbService } from '../services/db';
-import { Requisition, Material, EPIDelivery } from '../types';
+import { Requisition, Material, EPIDelivery, RequisitionItem } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { SignaturePad } from '../components/common/SignaturePad';
 import { PrintableEPIReceipt } from '../components/common/PrintableEPIReceipt';
+import { PrintableRequisitionModal } from '../components/common/PrintableRequisitionModal';
+import { QRScannerModal } from '../components/common/QRScannerModal';
+import { DecodedQRTarget } from '../utils/qr';
 import {
   formatDateTimeBR,
   formatDateBR,
@@ -34,6 +39,13 @@ import {
 interface AlmoxarifadoDashboardPageProps {
   onNavigateToTechnician?: () => void;
   onNavigateToDirectExit?: () => void;
+}
+
+interface ItemQRVerification {
+  status: 'IDLE' | 'MATCH' | 'MISMATCH';
+  scannedCode?: string;
+  scannedMaterial?: Material;
+  errorMessage?: string;
 }
 
 export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps> = ({
@@ -55,10 +67,23 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
   const [observations, setObservations] = useState('');
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-  // Status message
+  // QR Code Verification State per Requisition Item
+  const [qrVerifications, setQrVerifications] = useState<Record<string, ItemQRVerification>>({});
+  const [activeVerifyingItemId, setActiveVerifyingItemId] = useState<string | null>(null);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [manualQrInput, setManualQrInput] = useState('');
+
+  // Stamped Number registration modal
+  const [stampingReq, setStampingReq] = useState<Requisition | null>(null);
+  const [stampedNumberInput, setStampedNumberInput] = useState('');
+  const [stampError, setStampError] = useState<string | null>(null);
+  const [stampSuccess, setStampSuccess] = useState<string | null>(null);
+
+  // Status message & Receipts
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [receiptToPrint, setReceiptToPrint] = useState<EPIDelivery | null>(null);
+  const [requisitionToPrint, setRequisitionToPrint] = useState<Requisition | null>(null);
 
   const loadData = () => {
     setRequisitions(dbService.getRequisitions());
@@ -85,12 +110,14 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
     setErrorMsg(null);
     setSuccessMsg(null);
     setShowCloseConfirm(false);
+    setQrVerifications({});
+    setActiveVerifyingItemId(null);
 
     // Default each item's quantity to deliver to the remaining needed (capped by stock)
     const initialQty: Record<string, number> = {};
     req.items.forEach((item) => {
       const remaining = item.quantityRequested - item.quantityDelivered;
-      const mat = dbService.getMaterialById(item.materialId);
+      const mat = dbService.getMaterialById(item.materialId) || dbService.getMaterialByCode(item.materialCode);
       const stock = mat ? mat.currentStock : 0;
       initialQty[item.id] = Math.max(0, Math.min(remaining, stock));
     });
@@ -111,6 +138,96 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
       ...prev,
       [itemId]: valid,
     }));
+  };
+
+  // QR Code Verification Flow
+  const handleStartQRScan = (itemId: string) => {
+    setActiveVerifyingItemId(itemId);
+    setManualQrInput('');
+    setIsQrScannerOpen(true);
+  };
+
+  const handleProcessScannedCode = (scannedRaw: string) => {
+    if (!activeFulfillReq || !activeVerifyingItemId) return;
+
+    const targetItem = activeFulfillReq.items.find((i) => i.id === activeVerifyingItemId);
+    if (!targetItem) return;
+
+    const cleanCode = scannedRaw.trim();
+    if (!cleanCode) return;
+
+    // Search catalog for scanned material
+    const allMaterials = dbService.getMaterials();
+    const cleanUpper = cleanCode.toUpperCase();
+    const foundMat = allMaterials.find(
+      (m) =>
+        m.code.toUpperCase() === cleanUpper ||
+        (m.ikkiCode && m.ikkiCode.toUpperCase() === cleanUpper) ||
+        m.id === cleanCode ||
+        (m.code === '001420' && cleanUpper === 'EPI-LUV-01') ||
+        (m.code === '001421' && cleanUpper === 'EPI-BOT-02') ||
+        (m.code === '002105' && cleanUpper === 'EPI-COL-03') ||
+        (m.code === '005230' && (cleanUpper.includes('005230') || cleanUpper.includes('CALCA')))
+    );
+
+    if (!foundMat) {
+      setQrVerifications((prev) => ({
+        ...prev,
+        [activeVerifyingItemId]: {
+          status: 'MISMATCH',
+          scannedCode: cleanCode,
+          errorMessage: `Código "${cleanCode}" não encontrado no catálogo oficial IKKI de materiais.`,
+        },
+      }));
+      return;
+    }
+
+    // Compare scanned material against the requisition target item
+    const isCodeMatch =
+      foundMat.id === targetItem.materialId ||
+      foundMat.code.toUpperCase() === targetItem.materialCode.toUpperCase() ||
+      (foundMat.ikkiCode && foundMat.ikkiCode.toUpperCase() === targetItem.materialCode.toUpperCase());
+
+    if (isCodeMatch) {
+      // MATCH: Green confirmation!
+      setQrVerifications((prev) => ({
+        ...prev,
+        [activeVerifyingItemId]: {
+          status: 'MATCH',
+          scannedCode: foundMat.code,
+          scannedMaterial: foundMat,
+        },
+      }));
+      // Auto-set quantity to remaining (capped by stock) if currently 0
+      const remaining = targetItem.quantityRequested - targetItem.quantityDelivered;
+      const currentQty = deliveredQuantities[targetItem.id] || 0;
+      if (currentQty === 0) {
+        setDeliveredQuantities((prev) => ({
+          ...prev,
+          [targetItem.id]: Math.max(0, Math.min(remaining, foundMat.currentStock)),
+        }));
+      }
+    } else {
+      // MISMATCH: Red Warning! Block mistaken confirmation
+      setQrVerifications((prev) => ({
+        ...prev,
+        [activeVerifyingItemId]: {
+          status: 'MISMATCH',
+          scannedCode: foundMat.code,
+          scannedMaterial: foundMat,
+          errorMessage: `Divergência detectada! O código lido (${foundMat.code} - ${foundMat.name}) não confere com o item solicitado (${targetItem.materialCode} - ${targetItem.materialName}).`,
+        },
+      }));
+      // Reset delivered quantity for this item to prevent mistaken dispatch
+      setDeliveredQuantities((prev) => ({
+        ...prev,
+        [targetItem.id]: 0,
+      }));
+    }
+  };
+
+  const handleQrScanSuccess = (target: DecodedQRTarget) => {
+    handleProcessScannedCode(target.code || target.raw);
   };
 
   const isFormDirty = () => {
@@ -137,6 +254,8 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
     setObservations('');
     setErrorMsg(null);
     setSuccessMsg(null);
+    setQrVerifications({});
+    setActiveVerifyingItemId(null);
   };
 
   // Confirm delivery
@@ -150,6 +269,14 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
     if (!canFulfillRequisitions) {
       setErrorMsg('Acesso negado: Seu perfil atual não possui permissão para entregar materiais.');
       return;
+    }
+
+    // Check if any item has a pending MISMATCH verification
+    for (const [itemId, verif] of Object.entries(qrVerifications)) {
+      if (verif.status === 'MISMATCH' && (deliveredQuantities[itemId] || 0) > 0) {
+        setErrorMsg('Conferência bloqueada: Há itens com divergência de QR Code. Escaneie o material correto antes de confirmar a entrega.');
+        return;
+      }
     }
 
     const itemsToDeliver = Object.entries(deliveredQuantities)
@@ -187,16 +314,50 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
     }
   };
 
+  // Stamped number modal handlers
+  const handleOpenStampModal = (req: Requisition) => {
+    setStampingReq(req);
+    setStampedNumberInput(req.stampedNumber || '');
+    setStampError(null);
+    setStampSuccess(null);
+  };
+
+  const handleSaveStamp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !stampingReq) return;
+    setStampError(null);
+    setStampSuccess(null);
+
+    const res = dbService.setRequisitionStampedNumber(
+      stampingReq.id,
+      stampedNumberInput,
+      { id: currentUser.id, name: currentUser.name, role: currentUser.role }
+    );
+
+    if (!res.success) {
+      setStampError(res.message);
+    } else {
+      setStampSuccess(res.message);
+      setTimeout(() => {
+        setStampingReq(null);
+        if (activeFulfillReq && activeFulfillReq.id === stampingReq.id) {
+          const fresh = dbService.getRequisitionById(stampingReq.id);
+          if (fresh) setActiveFulfillReq(fresh);
+        }
+      }, 700);
+    }
+  };
+
   // Filter requisitions
   const filteredRequisitions = requisitions.filter((req) => {
     const q = search.trim().toLowerCase();
     const matchesSearch =
       !q ||
       req.number.toLowerCase().includes(q) ||
-      req.employeeName.toLowerCase().includes(q) ||
-      req.employeeMatricula.toLowerCase().includes(q) ||
+      (req.stampedNumber && req.stampedNumber.toLowerCase().includes(q)) ||
+      req.regionName.toLowerCase().includes(q) ||
       (req.requestedByName && req.requestedByName.toLowerCase().includes(q)) ||
-      req.items.some((i) => i.materialName.toLowerCase().includes(q));
+      req.items.some((i) => i.materialName.toLowerCase().includes(q) || i.materialCode.toLowerCase().includes(q));
 
     let matchesFilter = true;
     if (selectedFilter === 'novas') {
@@ -238,10 +399,10 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
           </div>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Boxes className="w-7 h-7 text-white" />
-            Painel de Recepção & Atendimento do Almoxarifado
+            Painel de Recepção & Separação do Almoxarifado
           </h1>
           <p className="text-xs text-orange-100 mt-1 max-w-xl">
-            Recepção instantânea de requisições enviadas pelos Técnicos de Segurança, conferência de estoque, entrega física de EPIs e termo eletrônico NR-6.
+            Recepção instantânea de requisições por Região Operacional, controle de carimbo oficial no papel, conferência por QR Code e baixa de estoque.
           </p>
         </div>
 
@@ -262,7 +423,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
         </div>
       </div>
 
-      {/* KPI Counters & Live Notification Indicator */}
+      {/* KPI Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div
           onClick={() => setSelectedFilter('novas')}
@@ -275,14 +436,14 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5">
               <Bell className="w-3.5 h-3.5 text-orange-600" />
-              Novas Solicitações
+              Novas Requisições
             </span>
             {newRequestsCount > 0 && (
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             )}
           </div>
           <div className="text-2xl font-black text-orange-600">{newRequestsCount}</div>
-          <span className="text-[10px] text-orange-700 font-medium">requisições recém-enviadas pelo TST</span>
+          <span className="text-[10px] text-orange-700 font-medium">requisições recém-emitidas pelo TST</span>
         </div>
 
         <div
@@ -312,7 +473,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             Parcialmente Atendidas
           </span>
           <div className="text-2xl font-black text-blue-600">{partialRequestsCount}</div>
-          <span className="text-[10px] text-blue-700">com itens faltantes para entrega</span>
+          <span className="text-[10px] text-blue-700">com itens restantes para entrega</span>
         </div>
 
         <div
@@ -327,7 +488,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             Atendidas Totalmente
           </span>
           <div className="text-2xl font-black text-emerald-700">{fulfilledRequestsCount}</div>
-          <span className="text-[10px] text-emerald-600">finalizadas com recibo NR-6</span>
+          <span className="text-[10px] text-emerald-600">estoque baixado e finalizado</span>
         </div>
       </div>
 
@@ -341,7 +502,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por número da requisição (REQ-2026-XXXX), nome do funcionário ou matrícula..."
+              placeholder="Buscar por número da requisição, número carimbado (ex: 19-47), região (Ipiranga)..."
               className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:outline-hidden bg-slate-50/50 font-medium"
             />
           </div>
@@ -354,13 +515,12 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
               { id: 'pendente', label: 'Pendentes' },
               { id: 'parcialmente_atendida', label: 'Parciais' },
               { id: 'atendida', label: 'Atendidas' },
-              { id: 'cancelada', label: 'Canceladas' },
               { id: 'todas', label: 'Todas' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setSelectedFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
                   selectedFilter === tab.id
                     ? 'bg-orange-600 text-white shadow-2xs'
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -378,7 +538,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
         <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-sm text-slate-900">
-              Fila de Requisições do Almoxarifado ({filteredRequisitions.length})
+              Fila de Separação do Almoxarifado ({filteredRequisitions.length})
             </h3>
             {newRequestsCount > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white animate-pulse">
@@ -391,16 +551,16 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
             {onNavigateToDirectExit && (
               <button
                 onClick={onNavigateToDirectExit}
-                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-300 shadow-2xs"
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-300 shadow-2xs cursor-pointer"
               >
                 <Boxes className="w-3.5 h-3.5 text-orange-600" />
-                Saída Avulsa Sem Requisição
+                Saída Avulsa
               </button>
             )}
             {onNavigateToTechnician && (
               <button
                 onClick={onNavigateToTechnician}
-                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 px-2 py-1"
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 px-2 py-1 cursor-pointer"
               >
                 Acessar Painel do TST <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -412,20 +572,19 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
               <tr>
-                <th className="py-3 px-4">Número da Requisição</th>
-                <th className="py-3 px-4">Região</th>
+                <th className="py-3 px-4">Requisição / Nº Carimbado</th>
+                <th className="py-3 px-4">Região Solicitante</th>
                 <th className="py-3 px-4">Técnico (TST)</th>
-                <th className="py-3 px-4">Funcionário & Setor</th>
-                <th className="py-3 px-4">Itens Solicitados / Faltantes</th>
+                <th className="py-3 px-4">Itens Solicitados</th>
                 <th className="py-3 px-4 text-center">Prioridade</th>
                 <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Ação</th>
+                <th className="py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredRequisitions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     <Boxes className="w-10 h-10 mx-auto mb-2 text-slate-300" />
                     <p className="font-semibold text-slate-600">Nenhuma requisição na fila com os filtros atuais.</p>
                   </td>
@@ -454,37 +613,40 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono">
+                        {req.stampedNumber ? (
+                          <div className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded bg-orange-100 border border-orange-300 text-orange-800 text-[10px] font-mono font-black">
+                            <Tag className="w-3 h-3 text-orange-600" />
+                            Carimbo: {req.stampedNumber}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic block mt-0.5">
+                            Aguardando carimbo físico
+                          </span>
+                        )}
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                           {req.sentAt ? formatDateTimeBR(req.sentAt) : formatDateBR(req.createdAt)}
                         </div>
                       </td>
 
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1 font-bold text-slate-800 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl text-[11px]">
-                          <MapPin className="w-3 h-3 text-amber-600" />
-                          {req.regionName || 'Paulista'}
+                        <span className="inline-flex items-center gap-1 font-bold text-slate-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl text-xs">
+                          <MapPin className="w-3.5 h-3.5 text-orange-600" />
+                          {req.regionName || 'Ipiranga'}
                         </span>
                       </td>
 
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-900">{req.requestedByName}</div>
                         <span className="text-[10px] text-slate-500 font-mono">
-                          Mat: {req.requestedByMatricula || 'TST'}
+                          {req.requestedByMatricula || 'TST Homologado'}
                         </span>
-                      </td>
-
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{req.employeeName}</div>
-                        <div className="text-[11px] text-slate-500 font-mono">
-                          Mat: {req.employeeMatricula} • {req.sector}
-                        </div>
                       </td>
 
                       <td className="py-3 px-4 max-w-xs">
                         <div className="text-slate-800 font-medium">
                           {req.items.map((i) => {
                             const remaining = i.quantityRequested - i.quantityDelivered;
-                            return `${i.materialName} (${remaining > 0 ? `falta ${remaining}` : 'entregue'})`;
+                            return `${i.quantityRequested}x ${i.materialName} (${remaining > 0 ? `falta ${remaining}` : 'atendido'})`;
                           }).join(', ')}
                         </div>
                       </td>
@@ -502,24 +664,49 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                       </td>
 
                       <td className="py-3 px-4 text-right">
-                        {(req.status === 'enviada' ||
-                          req.status === 'pendente' ||
-                          req.status === 'parcialmente_atendida') ? (
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Print Requisition Button */}
                           <button
-                            onClick={() => handleOpenFulfillment(req)}
-                            className="px-3.5 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 ml-auto"
+                            onClick={() => setRequisitionToPrint(req)}
+                            title="Imprimir Requisição Oficial"
+                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition cursor-pointer"
                           >
-                            <PackageCheck className="w-3.5 h-3.5" />
-                            Atender
+                            <Printer className="w-4 h-4" />
                           </button>
-                        ) : (
+
+                          {/* Stamped Number Button */}
                           <button
-                            onClick={() => handleOpenFulfillment(req)}
-                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold ml-auto"
+                            onClick={() => handleOpenStampModal(req)}
+                            title="Registrar Número Carimbado Oficial (ex: 19-47)"
+                            className={`p-1.5 rounded-lg transition cursor-pointer ${
+                              req.stampedNumber
+                                ? 'bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                            }`}
                           >
-                            Visualizar
+                            <Tag className="w-4 h-4" />
                           </button>
-                        )}
+
+                          {/* Fulfillment Button */}
+                          {(req.status === 'enviada' ||
+                            req.status === 'pendente' ||
+                            req.status === 'parcialmente_atendida') ? (
+                            <button
+                              onClick={() => handleOpenFulfillment(req)}
+                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <PackageCheck className="w-3.5 h-3.5" />
+                              Separar
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleOpenFulfillment(req)}
+                              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                            >
+                              Ver
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -533,7 +720,7 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
       {/* FULFILLMENT MODAL / DRAWER */}
       {activeFulfillReq && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 my-8 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200 my-8 animate-in fade-in zoom-in-95">
             {/* Modal Header */}
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 flex items-center justify-between">
               <div>
@@ -544,26 +731,49 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getRequisitionStatusBadge(activeFulfillReq.status).color}`}>
                     {activeFulfillReq.status.toUpperCase()}
                   </span>
+                  {activeFulfillReq.stampedNumber ? (
+                    <span className="font-mono text-xs bg-orange-600 px-2 py-0.5 rounded text-white font-bold">
+                      Nº Carimbado: {activeFulfillReq.stampedNumber}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenStampModal(activeFulfillReq)}
+                      className="text-[10px] text-amber-300 underline hover:text-white"
+                    >
+                      + Registrar carimbo
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-slate-300 mt-1">
-                  Emitida pelo TST {activeFulfillReq.requestedByName} ({activeFulfillReq.requestedByMatricula || 'TST'})
+                  Região Solicitante: <strong className="text-white">{activeFulfillReq.regionName}</strong> • TST: {activeFulfillReq.requestedByName}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleRequestClose}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition border border-white/20"
-              >
-                <X className="w-4 h-4" />
-                Fechar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRequisitionToPrint(activeFulfillReq)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition border border-white/20 cursor-pointer"
+                  title="Imprimir Requisição"
+                >
+                  <Printer className="w-4 h-4 text-orange-400" />
+                  Imprimir
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestClose}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold text-white transition border border-white/20 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <form onSubmit={handleConfirmFulfillment} className="p-6 space-y-5 text-xs">
               {errorMsg && (
                 <div className="p-3.5 bg-rose-50 border border-rose-300 text-rose-800 rounded-xl flex items-center gap-2 font-semibold">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
                   <span>{errorMsg}</span>
                 </div>
               )}
@@ -578,174 +788,192 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                     <button
                       type="button"
                       onClick={() => setReceiptToPrint(receiptToPrint)}
-                      className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                      className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      Imprimir Termo NR-6
+                      Imprimir Comprovante
                     </button>
                   )}
                 </div>
               )}
 
-              {/* Employee & Region Check Card */}
+              {/* Region & Responsibility Header Card */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                    Conferência de Identidade do Destinatário:
+                    Destino & Controle de Consumo Operacional:
                   </span>
-                  <span className="font-bold text-sm text-slate-900 block">
-                    {activeFulfillReq.employeeName}
-                  </span>
-                  <div className="text-slate-500 font-mono text-[11px] mt-0.5 flex flex-wrap gap-2">
-                    <span>Matrícula: {activeFulfillReq.employeeMatricula}</span>
-                    <span>• Setor: {activeFulfillReq.sector}</span>
-                    <span className="text-amber-800 font-bold bg-amber-100/70 px-1.5 py-0.2 rounded flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      Região: {activeFulfillReq.regionName || 'Paulista'}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-orange-600" />
+                    <span className="font-black text-base text-slate-900">
+                      Região {activeFulfillReq.regionName}
                     </span>
                   </div>
+                  {activeFulfillReq.stampedNumber && (
+                    <div className="text-orange-800 font-mono font-bold text-xs mt-1">
+                      Número Oficial no Papel: {activeFulfillReq.stampedNumber}
+                    </div>
+                  )}
                 </div>
 
                 <div className="sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-bold">ALMOXARIFE RESPONSÁVEL:</span>
                   <span className="font-bold text-slate-800">{currentUser?.name}</span>
                   <div className="text-[10px] text-slate-400 mt-0.5">
-                    Pedido em: {formatDateTimeBR(activeFulfillReq.sentAt || activeFulfillReq.createdAt)}
+                    Data: {formatDateTimeBR(activeFulfillReq.sentAt || activeFulfillReq.createdAt)}
                   </div>
                 </div>
               </div>
 
-              {/* Justification note */}
-              {activeFulfillReq.justification && (
-                <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-amber-900">
-                  <strong>Justificativa do TST:</strong> "{activeFulfillReq.justification}"
-                </div>
-              )}
-
-              {/* Items Table for Fulfillment */}
+              {/* Items Table for Fulfillment with Live QR Code Verification */}
               <div>
-                <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-2 flex items-center gap-1.5">
-                  <PackageCheck className="w-4 h-4 text-orange-600" />
-                  Conferência Física de Saldo & Quantidades a Entregar
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <PackageCheck className="w-4 h-4 text-orange-600" />
+                    Conferência Física de Materiais & QR Code
+                  </h4>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    A leitura por QR Code valida a separação física do item
+                  </span>
+                </div>
 
-                <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
-                      <tr>
-                        <th className="py-2.5 px-3">EPI / Material</th>
-                        <th className="py-2.5 px-3 text-center">Solicitado</th>
-                        <th className="py-2.5 px-3 text-center">Entregue</th>
-                        <th className="py-2.5 px-3 text-center">Restante</th>
-                        <th className="py-2.5 px-3 text-center">Estoque Físico</th>
-                        <th className="py-2.5 px-3 text-center">Entregar Agora</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {activeFulfillReq.items.map((item) => {
-                        const mat = materials.find((m) => m.id === item.materialId);
-                        const stock = mat ? mat.currentStock : 0;
-                        const remaining = item.quantityRequested - item.quantityDelivered;
-                        const qtyNow = deliveredQuantities[item.id] || 0;
-                        const isDone = item.quantityDelivered >= item.quantityRequested;
+                <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                  {activeFulfillReq.items.map((item) => {
+                    const mat = materials.find((m) => m.id === item.materialId || m.code === item.materialCode);
+                    const stock = mat ? mat.currentStock : 0;
+                    const remaining = item.quantityRequested - item.quantityDelivered;
+                    const qtyNow = deliveredQuantities[item.id] || 0;
+                    const isDone = item.quantityDelivered >= item.quantityRequested;
+                    const qrVerif = qrVerifications[item.id];
 
-                        return (
-                          <tr key={item.id} className="hover:bg-slate-50">
-                            <td className="py-2.5 px-3">
-                              <div className="font-bold text-slate-900">{item.materialName}</div>
-                              <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-orange-700">{item.materialCode}</span>
-                                {item.caNumber && <span>• CA: {item.caNumber}</span>}
-                              </div>
-
-                              {/* Physical Storage Locations (Corredor, Prateleira, Nível, Qtd) */}
-                              <div className="mt-1.5 p-2 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px]">
-                                <span className="font-bold text-amber-950 flex items-center gap-1 text-[10px] uppercase tracking-wider mb-1">
-                                  📍 Localização para Separação:
-                                </span>
-                                {mat?.physicalLocations && mat.physicalLocations.length > 0 ? (
-                                  <div className="space-y-1">
-                                    {mat.physicalLocations.map((loc, lIdx) => (
-                                      <div
-                                        key={loc.id || lIdx}
-                                        className="flex items-center justify-between gap-2 bg-white px-2 py-0.5 rounded border border-amber-200/60"
-                                      >
-                                        <span className="font-semibold text-slate-800">
-                                          {loc.aisle} • {loc.shelf} • {loc.level}
-                                        </span>
-                                        <span className="font-mono font-bold text-orange-700 text-[10px]">
-                                          Disponível: {loc.quantity} {item.unit}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <span className="text-slate-600 font-medium">
-                                    {mat?.shelf || 'Almoxarifado Central'}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono">
-                              {item.quantityRequested} {item.unit}
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono text-emerald-700 font-bold">
-                              {item.quantityDelivered} {item.unit}
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono font-bold">
-                              <span className={remaining > 0 ? 'text-amber-700' : 'text-slate-400'}>
-                                {remaining} {item.unit}
+                    return (
+                      <div key={item.id} className="p-3.5 bg-white space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-sm text-slate-900">{item.materialName}</span>
+                              <span className="font-mono text-xs font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                                {item.materialCode}
                               </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-center font-mono font-bold">
-                              <span
-                                className={`px-2 py-0.5 rounded ${
-                                  stock === 0
-                                    ? 'bg-rose-100 text-rose-800'
-                                    : stock < remaining
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-slate-100 text-slate-800'
+                              {item.caNumber && (
+                                <span className="text-[10px] font-mono text-slate-500">CA: {item.caNumber}</span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">
+                              Localização física:{' '}
+                              <strong className="text-slate-800">
+                                {mat?.shelf || mat?.location || 'Almoxarifado Central'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* QR Code Scan Action & Status Badge */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {qrVerif?.status === 'MATCH' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                Conferido por QR (MATCH)
+                              </span>
+                            )}
+                            {qrVerif?.status === 'MISMATCH' && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                                Divergência QR (MISMATCH)
+                              </span>
+                            )}
+                            {!isDone && (
+                              <button
+                                type="button"
+                                onClick={() => handleStartQRScan(item.id)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border ${
+                                  qrVerif?.status === 'MATCH'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                    : qrVerif?.status === 'MISMATCH'
+                                    ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
                                 }`}
                               >
+                                <QrCode className="w-3.5 h-3.5" />
+                                {qrVerif?.status === 'MATCH' ? 'Re-escanear' : 'Conferir QR Code'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* QR Code Verification Feedback Alert Banner */}
+                        {qrVerif && qrVerif.status === 'MATCH' && (
+                          <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-[11px] flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div>
+                              <strong>CORRESPONDÊNCIA CONFIRMADA (MATCH)!</strong> O material físico lido confere com o item solicitado ({targetItemSummary(qrVerif.scannedMaterial)}). Separação liberada.
+                            </div>
+                          </div>
+                        )}
+
+                        {qrVerif && qrVerif.status === 'MISMATCH' && (
+                          <div className="p-2.5 bg-rose-50 border border-rose-300 text-rose-900 rounded-xl text-[11px] flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <div>
+                              <strong className="text-rose-700">DIVERGÊNCIA DETECTADA (MISMATCH)!</strong>{' '}
+                              {qrVerif.errorMessage || 'O item escaneado não corresponde ao material da requisição. A entrega foi bloqueada para evitar expedição equivocada.'}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Quantities Row */}
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
+                          <div className="flex items-center gap-4 text-slate-600">
+                            <span>Solicitado: <strong className="text-slate-900">{item.quantityRequested} {item.unit}</strong></span>
+                            <span>Já Entregue: <strong className="text-emerald-700">{item.quantityDelivered} {item.unit}</strong></span>
+                            <span>Pendente: <strong className="text-amber-700">{remaining} {item.unit}</strong></span>
+                            <span>
+                              Saldo em Estoque:{' '}
+                              <strong className={stock < remaining ? 'text-rose-600 font-black' : 'text-slate-900'}>
                                 {stock} {item.unit}
+                              </strong>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-700">Entregar nesta saída:</span>
+                            {isDone ? (
+                              <span className="text-emerald-600 font-bold text-xs flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Totalmente Atendido
                               </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              {isDone ? (
-                                <span className="text-emerald-600 font-bold text-xs flex items-center justify-center gap-1">
-                                  <CheckCircle2 className="w-4 h-4" /> Entregue
-                                </span>
-                              ) : (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={Math.min(remaining, stock)}
-                                  disabled={!canFulfillRequisitions || stock === 0}
-                                  value={qtyNow}
-                                  onChange={(e) =>
-                                    handleQuantityChange(
-                                      item.id,
-                                      parseInt(e.target.value) || 0,
-                                      remaining,
-                                      stock
-                                    )
-                                  }
-                                  className="w-20 px-2 py-1 text-center font-mono font-bold border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 disabled:bg-slate-100"
-                                />
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            ) : (
+                              <input
+                                type="number"
+                                min="0"
+                                max={Math.min(remaining, stock)}
+                                disabled={!canFulfillRequisitions || stock === 0 || qrVerif?.status === 'MISMATCH'}
+                                value={qtyNow}
+                                onChange={(e) =>
+                                  handleQuantityChange(
+                                    item.id,
+                                    parseInt(e.target.value) || 0,
+                                    remaining,
+                                    stock
+                                  )
+                                }
+                                className={`w-20 px-2 py-1 text-center font-mono font-bold border rounded-lg focus:ring-2 focus:ring-orange-500 ${
+                                  qrVerif?.status === 'MISMATCH'
+                                    ? 'bg-rose-100 border-rose-300 text-rose-700 cursor-not-allowed'
+                                    : 'border-slate-300 bg-white'
+                                }`}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Signature Pad */}
               <div>
                 <SignaturePad
-                  employeeName={activeFulfillReq.employeeName}
+                  employeeName={activeFulfillReq.requestedByName || `Região ${activeFulfillReq.regionName}`}
                   onSave={(dataUrl) => setSignatureData(dataUrl)}
                   onClear={() => setSignatureData('')}
                 />
@@ -754,13 +982,13 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
               {/* Observations */}
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Observações do Almoxarife (Lote, Condição dos Equipamentos)
+                  Observações do Almoxarife (Lote, Inspeção Visual)
                 </label>
                 <input
                   type="text"
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
-                  placeholder="Ex: Entrega parcial por falta de tamanho em estoque ou lote certificado."
+                  placeholder="Ex: Material conferido por QR Code e entregue em perfeitas condições operacionais."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -768,28 +996,24 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
               {/* Actions Footer */}
               <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
                 <span className="text-[11px] text-slate-500">
-                  A baixa de saldo é executada em transação atômica única no banco.
+                  A baixa de saldo é definitiva e debitada por localização física.
                 </span>
 
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={handleRequestClose}
-                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-100"
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
                   >
                     Voltar ao Painel
                   </button>
                   <button
                     type="submit"
-                    disabled={
-                      !canFulfillRequisitions ||
-                      activeFulfillReq.status === 'atendida' ||
-                      activeFulfillReq.status === 'cancelada'
-                    }
-                    className="px-5 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-xl font-bold shadow-md shadow-orange-600/20 transition flex items-center gap-1.5"
+                    disabled={!canFulfillRequisitions}
+                    className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition shadow-md shadow-orange-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
-                    <ShieldCheck className="w-4 h-4" />
-                    Confirmar Entrega & Baixa de Saldo
+                    <PackageCheck className="w-4 h-4" />
+                    Confirmar Entrega e Baixar Estoque
                   </button>
                 </div>
               </div>
@@ -798,48 +1022,185 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
         </div>
       )}
 
-      {/* CONFIRM CLOSE WITH UNSAVED DATA MODAL */}
-      {showCloseConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-6 h-6" />
+      {/* QR SCANNER & MANUAL CODE MODAL */}
+      {isQrScannerOpen && activeFulfillReq && activeVerifyingItemId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-5 h-5 text-orange-400" />
+                <div>
+                  <h3 className="font-bold text-sm">Conferência de QR Code do Material</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Aproxime o código à câmera ou digite o código IKKI oficial
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQrScannerOpen(false)}
+                className="p-1 hover:bg-white/20 rounded-lg text-slate-300 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className="text-base font-black text-slate-900 text-center mb-2">
-              Descartar alterações deste atendimento?
-            </h3>
-            <p className="text-xs text-slate-600 text-center mb-5 leading-relaxed">
-              Existem quantidades ou dados digitados que ainda não foram confirmados. Se fechar agora, as informações preenchidas nesta tela serão descartadas.
-              <br /><br />
-              <strong className="text-slate-800">Nota de Segurança:</strong> Atendimentos e baixas de estoque que já foram confirmados anteriormente permanecem salvos no sistema e nunca serão cancelados ou apagados.
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowCloseConfirm(false)}
-                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition"
-              >
-                Continuar Atendimento
-              </button>
-              <button
-                type="button"
-                onClick={handleForceClose}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
-              >
-                Sim, Fechar sem Salvar
-              </button>
+
+            <div className="p-5 space-y-4 text-xs">
+              {/* Target Item summary */}
+              {(() => {
+                const target = activeFulfillReq.items.find((i) => i.id === activeVerifyingItemId);
+                if (!target) return null;
+                const mat = materials.find((m) => m.id === target.materialId || m.code === target.materialCode);
+                return (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-orange-800 tracking-wider">
+                      Item Solicitado a Conferir:
+                    </span>
+                    <div className="font-black text-sm text-slate-900">{target.materialName}</div>
+                    <div className="text-[11px] text-slate-700 flex items-center justify-between">
+                      <span>Cód. IKKI: <strong className="font-mono text-orange-700">{target.materialCode}</strong></span>
+                      <span>Qtd: <strong>{target.quantityRequested} {target.unit}</strong></span>
+                      <span>Local: <strong>{mat?.shelf || 'Almoxarifado'}</strong></span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Camera Scanner Component */}
+              <div className="border border-slate-200 rounded-2xl p-4 bg-slate-50 text-center space-y-3">
+                <div className="text-[11px] font-semibold text-slate-700 flex items-center justify-center gap-1.5">
+                  <Camera className="w-4 h-4 text-orange-600" />
+                  Leitor de Câmera Ativo
+                </div>
+
+                <QRScannerModal
+                  isOpen={isQrScannerOpen}
+                  onClose={() => setIsQrScannerOpen(false)}
+                  onScanSuccess={handleQrScanSuccess}
+                />
+              </div>
+
+              {/* Manual Code Input option for barcodes or physical codes */}
+              <div className="pt-2 border-t border-slate-200 space-y-2">
+                <label className="block font-bold text-slate-800">
+                  Ou digite o Código IKKI do Material:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={manualQrInput}
+                    onChange={(e) => setManualQrInput(e.target.value)}
+                    placeholder="Ex: 005230, 001420, EPI-LUV-01..."
+                    className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (manualQrInput.trim()) {
+                        handleProcessScannedCode(manualQrInput.trim());
+                        setIsQrScannerOpen(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold transition cursor-pointer"
+                  >
+                    Validar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* PRINTABLE RECEIPT MODAL */}
-      {receiptToPrint && (
-        <PrintableEPIReceipt
-          delivery={receiptToPrint}
-          onClose={() => setReceiptToPrint(null)}
-        />
+      {/* STAMPED NUMBER REGISTRATION MODAL */}
+      {stampingReq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Tag className="w-5 h-5 text-orange-400" />
+                <h3 className="font-bold text-sm">Registrar Número Oficial Carimbado</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStampingReq(null)}
+                className="p-1 hover:bg-white/20 rounded-lg text-slate-300 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStamp} className="p-5 space-y-4 text-xs">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                <div>Requisição: <strong className="font-mono text-slate-900">{stampingReq.number}</strong></div>
+                <div>Região Solicitante: <strong className="text-slate-900">{stampingReq.regionName}</strong></div>
+                <div>TST: <span className="text-slate-700">{stampingReq.requestedByName}</span></div>
+              </div>
+
+              {stampError && (
+                <div className="p-2.5 bg-rose-50 text-rose-800 rounded-lg border border-rose-200">
+                  {stampError}
+                </div>
+              )}
+              {stampSuccess && (
+                <div className="p-2.5 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200">
+                  {stampSuccess}
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Número Carimbado no Papel Físico *
+                </label>
+                <input
+                  type="text"
+                  value={stampedNumberInput}
+                  onChange={(e) => setStampedNumberInput(e.target.value)}
+                  placeholder="Ex: 19-47, 05-120, 0042"
+                  required
+                  className="w-full px-3 py-2 text-sm font-mono font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-orange-500 text-orange-700 tracking-wider"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Armazenado como texto para preservar hífens e zeros à esquerda. Deve ser único por requisição.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStampingReq(null)}
+                  className="px-3 py-1.5 border border-slate-300 rounded-xl text-slate-700 font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold cursor-pointer"
+                >
+                  Salvar Carimbo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
+
+      {/* PRINTABLE RECEIPT (NR-6) */}
+      <PrintableEPIReceipt
+        delivery={receiptToPrint}
+        onClose={() => setReceiptToPrint(null)}
+      />
+
+      {/* PRINTABLE REQUISITION */}
+      <PrintableRequisitionModal
+        requisition={requisitionToPrint}
+        onClose={() => setRequisitionToPrint(null)}
+      />
     </div>
   );
 };
+
+function targetItemSummary(mat?: Material) {
+  if (!mat) return '';
+  return `${mat.code} - ${mat.name} (${mat.shelf || mat.location})`;
+}

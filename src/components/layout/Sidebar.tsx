@@ -2,38 +2,41 @@ import React from 'react';
 import {
   LayoutDashboard,
   Boxes,
-  ArrowLeftRight,
-  QrCode,
-  Users,
   ClipboardList,
-  CheckCircle2,
-  FileBadge2,
-  BarChart3,
-  ShieldAlert,
-  UserCheck,
-  Settings,
-  X,
-  Flame,
-  AlertTriangle,
+  Layers,
   MapPin,
-  FileSpreadsheet,
+  Truck,
+  Fuel,
+  CalendarClock,
+  Wrench,
+  History,
+  BarChart3,
+  Settings2,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export type NavigationTab =
   | 'dashboard'
-  | 'tecnico_panel'
   | 'almoxarifado_panel'
-  | 'regional_comparison'
-  | 'excel_sync'
+  | 'requisitions'
   | 'materials'
+  | 'regional_comparison'
+  | 'fleet'
+  | 'fuel'
+  | 'preventive'
+  | 'service_orders'
+  | 'vehicle_history'
+  | 'reports'
+  | 'admin_integrations'
+  // Deep-linking / internal routes
+  | 'tecnico_panel'
+  | 'fulfillment'
+  | 'excel_sync'
   | 'movements'
   | 'qrcodes'
   | 'employees'
-  | 'requisitions'
-  | 'fulfillment'
   | 'epi_history'
-  | 'reports'
   | 'audit'
   | 'users'
   | 'settings';
@@ -66,96 +69,83 @@ export const Sidebar: React.FC<SidebarProps> = ({
     badge?: number | string;
     badgeColor?: string;
     adminOnly?: boolean;
-    highlight?: boolean;
+    numberTag: number;
   }[] = [
     {
       id: 'dashboard',
-      label: 'Painel Geral',
+      label: '1. Visão Geral',
       icon: LayoutDashboard,
-    },
-    {
-      id: 'tecnico_panel',
-      label: 'Painel do Técnico (TST)',
-      icon: ClipboardList,
-      highlight: true,
+      numberTag: 1,
     },
     {
       id: 'almoxarifado_panel',
-      label: 'Painel do Almoxarifado',
+      label: '2. Almoxarifado',
       icon: Boxes,
       badge: newReqCount > 0 ? `${newReqCount} Nova(s)` : pendingReqCount > 0 ? pendingReqCount : undefined,
       badgeColor: newReqCount > 0 ? 'bg-rose-500 text-white animate-pulse' : 'bg-amber-500 text-white',
-      highlight: true,
-    },
-    {
-      id: 'regional_comparison',
-      label: 'Consumo por Região',
-      icon: MapPin,
-      highlight: true,
-    },
-    {
-      id: 'excel_sync',
-      label: 'Sincronização Excel',
-      icon: FileSpreadsheet,
-      highlight: true,
-    },
-    {
-      id: 'materials',
-      label: 'Materiais & Saldo',
-      icon: Boxes,
-      badge: lowStockCount > 0 ? lowStockCount : undefined,
-      badgeColor: 'bg-rose-500 text-white',
-    },
-    {
-      id: 'movements',
-      label: 'Entradas & Saídas',
-      icon: ArrowLeftRight,
-    },
-    {
-      id: 'qrcodes',
-      label: 'Localizações & QR Codes',
-      icon: QrCode,
-    },
-    {
-      id: 'employees',
-      label: 'Funcionários (Equipes)',
-      icon: Users,
+      numberTag: 2,
     },
     {
       id: 'requisitions',
-      label: 'Todas as Requisições',
+      label: '3. Requisições',
       icon: ClipboardList,
+      numberTag: 3,
     },
     {
-      id: 'fulfillment',
-      label: 'Balcão de Atendimento',
-      icon: CheckCircle2,
+      id: 'materials',
+      label: '4. Estoque e Consolidado',
+      icon: Layers,
+      badge: lowStockCount > 0 ? lowStockCount : undefined,
+      badgeColor: 'bg-rose-500 text-white',
+      numberTag: 4,
     },
     {
-      id: 'epi_history',
-      label: 'Histórico Individual (NR-6)',
-      icon: FileBadge2,
+      id: 'regional_comparison',
+      label: '5. Postos e Sub-regiões',
+      icon: MapPin,
+      numberTag: 5,
+    },
+    {
+      id: 'fleet',
+      label: '6. Mecânica e Frota',
+      icon: Truck,
+      numberTag: 6,
+    },
+    {
+      id: 'fuel',
+      label: '7. Abastecimento',
+      icon: Fuel,
+      numberTag: 7,
+    },
+    {
+      id: 'preventive',
+      label: '8. Manutenção Preventiva',
+      icon: CalendarClock,
+      numberTag: 8,
+    },
+    {
+      id: 'service_orders',
+      label: '9. Ordens de Serviço',
+      icon: Wrench,
+      numberTag: 9,
+    },
+    {
+      id: 'vehicle_history',
+      label: '10. Histórico de Veículos',
+      icon: History,
+      numberTag: 10,
     },
     {
       id: 'reports',
-      label: 'Relatórios & Exportação',
+      label: '11. Relatórios Gerenciais',
       icon: BarChart3,
+      numberTag: 11,
     },
     {
-      id: 'audit',
-      label: 'Trilha de Auditoria',
-      icon: ShieldAlert,
-    },
-    {
-      id: 'users',
-      label: 'Usuários & Permissões',
-      icon: UserCheck,
-      adminOnly: true,
-    },
-    {
-      id: 'settings',
-      label: 'Configurações & Firebase',
-      icon: Settings,
+      id: 'admin_integrations',
+      label: '12. Administração & Integrações',
+      icon: Settings2,
+      numberTag: 12,
     },
   ];
 

@@ -137,11 +137,15 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
 
     setIsSubmitting(true);
     try {
+      const targetRegion = regions.find((r) => r.id === selectedRegionId);
+      const regName = targetRegion?.name || 'Ipiranga';
+
       const res = dbService.createRequisition(
         {
           requisitionNumber: customRequisitionNumber.trim() || undefined,
-          employeeId: selectedEmployeeId,
+          regionName: regName,
           regionId: selectedRegionId || undefined,
+          employeeId: selectedEmployeeId || undefined,
           priority,
           justification: justification.trim() || 'Requisição técnica de EPIs',
           observations: observations.trim() || undefined,
@@ -214,9 +218,11 @@ export const TechnicianDashboardPage: React.FC<TechnicianDashboardPageProps> = (
     const matchesSearch =
       !q ||
       req.number.toLowerCase().includes(q) ||
-      req.employeeName.toLowerCase().includes(q) ||
-      req.employeeMatricula.toLowerCase().includes(q) ||
-      req.sector.toLowerCase().includes(q);
+      (req.stampedNumber && req.stampedNumber.toLowerCase().includes(q)) ||
+      req.regionName.toLowerCase().includes(q) ||
+      (req.employeeName && req.employeeName.toLowerCase().includes(q)) ||
+      (req.employeeMatricula && req.employeeMatricula.toLowerCase().includes(q)) ||
+      (req.sector && req.sector.toLowerCase().includes(q));
 
     const matchesStatus =
       statusFilter === 'todos' ||

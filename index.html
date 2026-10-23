@@ -1,8 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Compatibility shim for browser extensions attempting to assign window.fetch
+      (function() {
+        try {
+          var _origFetch = window.fetch;
+          var _currentFetch = typeof _origFetch === 'function' ? _origFetch.bind(window) : _origFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return _currentFetch;
+            },
+            set: function(val) {
+              _currentFetch = val;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          // ignore
+        }
+
+        // Suppress third-party chrome extension interceptor errors
+        window.addEventListener('error', function(event) {
+          if (
+            (event.filename && event.filename.indexOf('chrome-extension://') !== -1) ||
+            (event.message && event.message.indexOf('fetch of #<Window>') !== -1)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
     <title>CPLU — Sistema Inteligente de Gestão de Almoxarifado</title>
     <meta name="description" content="Sistema Inteligente de Gestão de Almoxarifado para Operações de Limpeza Urbana. Controle de materiais, EPIs, requisições e estoque em tempo real." />
     <meta property="og:title" content="CPLU — Sistema Inteligente de Gestão de Almoxarifado" />

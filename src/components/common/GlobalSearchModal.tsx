@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Boxes, Users, ClipboardList, QrCode, ArrowRight } from 'lucide-react';
+import { Search, X, Boxes, Truck, Wrench, ClipboardList, QrCode, ArrowRight } from 'lucide-react';
 import { dbService } from '../../services/db';
-import { Material, Employee, Requisition, ShelfLocation } from '../../types';
+import { Material, Requisition, ShelfLocation, Vehicle, ServiceOrder } from '../../types';
 import { NavigationTab } from '../layout/Sidebar';
 
 interface GlobalSearchModalProps {
@@ -17,16 +17,18 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 }) => {
   const [query, setQuery] = useState('');
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
   const [shelves, setShelves] = useState<ShelfLocation[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [orders, setOrders] = useState<ServiceOrder[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setMaterials(dbService.getMaterials());
-      setEmployees(dbService.getEmployees());
       setRequisitions(dbService.getRequisitions());
       setShelves(dbService.getShelves());
+      setVehicles(dbService.getVehicles());
+      setOrders(dbService.getServiceOrders());
       setQuery('');
     }
   }, [isOpen]);
@@ -44,12 +46,23 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       )
     : [];
 
-  const filteredEmployees = q
-    ? employees.filter(
-        (e) =>
-          e.matricula.toLowerCase().includes(q) ||
-          e.name.toLowerCase().includes(q) ||
-          e.sector.toLowerCase().includes(q)
+  const filteredVehicles = q
+    ? vehicles.filter(
+        (v) =>
+          v.fleetNumber.toLowerCase().includes(q) ||
+          v.plate.toLowerCase().includes(q) ||
+          v.model.toLowerCase().includes(q) ||
+          v.subRegion.toLowerCase().includes(q)
+      )
+    : [];
+
+  const filteredOrders = q
+    ? orders.filter(
+        (o) =>
+          o.orderNumber.toLowerCase().includes(q) ||
+          o.fleetNumber.toLowerCase().includes(q) ||
+          o.plate.toLowerCase().includes(q) ||
+          o.description.toLowerCase().includes(q)
       )
     : [];
 
@@ -57,8 +70,9 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
     ? requisitions.filter(
         (r) =>
           r.number.toLowerCase().includes(q) ||
-          r.employeeName.toLowerCase().includes(q) ||
-          r.employeeMatricula.toLowerCase().includes(q)
+          (r.stampedNumber && r.stampedNumber.toLowerCase().includes(q)) ||
+          r.regionName.toLowerCase().includes(q) ||
+          r.justification.toLowerCase().includes(q)
       )
     : [];
 
@@ -73,7 +87,8 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
 
   const totalResults =
     filteredMaterials.length +
-    filteredEmployees.length +
+    filteredVehicles.length +
+    filteredOrders.length +
     filteredRequisitions.length +
     filteredShelves.length;
 
@@ -87,7 +102,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Digite o código do material, nome, matrícula, número de requisição..."
+            placeholder="Digite prefixo (COMP-01), código IKKI, OS, requisição..."
             className="flex-1 text-sm bg-transparent border-none focus:outline-hidden text-slate-800 placeholder-slate-400 font-medium"
             autoFocus
           />
@@ -111,29 +126,101 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {!q ? (
             <div className="py-8 text-center text-slate-400">
-              <p className="text-xs">Digite para buscar em todos os módulos da CPLU.</p>
+              <p className="text-xs">Digite para buscar em todos os módulos da CPL LOG.</p>
               <div className="flex justify-center gap-2 mt-3 text-[11px] text-slate-500">
-                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: EPI-LUV-01</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: LU-10452</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: REQ-2026-0001</span>
-                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: PRAT-EPI-01</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: COMP-01</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: 001420</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: 19-47</span>
+                <span className="bg-slate-100 px-2 py-0.5 rounded">Ex: OS-2026-0001</span>
               </div>
             </div>
           ) : totalResults === 0 ? (
             <div className="py-8 text-center text-slate-400">
               <p className="text-sm font-semibold text-slate-600">Nenhum resultado encontrado para "{query}"</p>
               <p className="text-xs text-slate-400 mt-1">
-                Verifique se o código ou termo foi digitado corretamente.
+                Verifique se o prefixo ou código foi digitado corretamente.
               </p>
             </div>
           ) : (
             <>
+              {/* Vehicles */}
+              {filteredVehicles.length > 0 && (
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Truck className="w-3.5 h-3.5 text-orange-600" />
+                    Veículos & Frota ({filteredVehicles.length})
+                  </h4>
+                  <div className="space-y-1.5">
+                    {filteredVehicles.slice(0, 5).map((veh) => (
+                      <div
+                        key={veh.id}
+                        onClick={() => {
+                          onNavigate('fleet', veh.id);
+                          onClose();
+                        }}
+                        className="p-2.5 bg-slate-50 hover:bg-orange-50 border border-slate-200 rounded-xl flex items-center justify-between cursor-pointer transition"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-slate-900 bg-orange-100 px-1.5 py-0.5 rounded">
+                              {veh.fleetNumber}
+                            </span>
+                            <span className="font-mono text-xs font-semibold text-slate-700">{veh.plate}</span>
+                            <span className="text-xs font-semibold text-slate-800">{veh.model}</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500">
+                            Sub-região: {veh.subRegion} • Odômetro: {veh.currentOdometerKm.toLocaleString()} km
+                          </span>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Service Orders */}
+              {filteredOrders.length > 0 && (
+                <div>
+                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                    Ordens de Serviço ({filteredOrders.length})
+                  </h4>
+                  <div className="space-y-1.5">
+                    {filteredOrders.slice(0, 5).map((os) => (
+                      <div
+                        key={os.id}
+                        onClick={() => {
+                          onNavigate('service_orders', os.vehicleId);
+                          onClose();
+                        }}
+                        className="p-2.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 rounded-xl flex items-center justify-between cursor-pointer transition"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-blue-800 bg-blue-100 px-1.5 py-0.5 rounded">
+                              {os.orderNumber}
+                            </span>
+                            <span className="font-mono text-xs font-bold text-slate-800">{os.fleetNumber}</span>
+                            <span className="text-xs text-slate-600 truncate max-w-xs">{os.description}</span>
+                          </div>
+                          <span className="text-[11px] text-slate-500">
+                            Status: {os.status.toUpperCase()} • Custo Total: R$ {os.totalCost.toFixed(2)}
+                          </span>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-slate-400" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Materials */}
               {filteredMaterials.length > 0 && (
                 <div>
                   <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <Boxes className="w-3.5 h-3.5 text-orange-600" />
-                    Materiais & EPIs ({filteredMaterials.length})
+                    Materiais & Peças ({filteredMaterials.length})
                   </h4>
                   <div className="space-y-1.5">
                     {filteredMaterials.slice(0, 5).map((mat) => (
@@ -168,7 +255,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                 <div>
                   <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <ClipboardList className="w-3.5 h-3.5 text-amber-600" />
-                    Requisições TST ({filteredRequisitions.length})
+                    Requisições ({filteredRequisitions.length})
                   </h4>
                   <div className="space-y-1.5">
                     {filteredRequisitions.slice(0, 5).map((req) => (
@@ -185,47 +272,17 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
                             <span className="font-mono text-xs font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
                               {req.number}
                             </span>
+                            {req.stampedNumber && (
+                              <span className="font-mono text-xs font-bold text-orange-800 bg-orange-100 px-1.5 py-0.5 rounded">
+                                Carimbo: {req.stampedNumber}
+                              </span>
+                            )}
                             <span className="text-xs font-semibold text-slate-800">
-                              {req.employeeName} ({req.employeeMatricula})
+                              Região: {req.regionName}
                             </span>
                           </div>
                           <span className="text-[11px] text-slate-500">
-                            Setor: {req.sector} • Status: {req.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Employees */}
-              {filteredEmployees.length > 0 && (
-                <div>
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-emerald-600" />
-                    Funcionários ({filteredEmployees.length})
-                  </h4>
-                  <div className="space-y-1.5">
-                    {filteredEmployees.slice(0, 5).map((emp) => (
-                      <div
-                        key={emp.id}
-                        onClick={() => {
-                          onNavigate('employees', emp.matricula);
-                          onClose();
-                        }}
-                        className="p-2.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 rounded-xl flex items-center justify-between cursor-pointer transition"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                              {emp.matricula}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-800">{emp.name}</span>
-                          </div>
-                          <span className="text-[11px] text-slate-500">
-                            {emp.role} • {emp.sector}
+                            Solicitante TST: {req.requestedByName} • Status: {req.status.toUpperCase()}
                           </span>
                         </div>
                         <ArrowRight className="w-4 h-4 text-slate-400" />

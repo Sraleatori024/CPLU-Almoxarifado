@@ -659,7 +659,12 @@ export const RegionalComparisonPage: React.FC = () => {
                         {formatDateTimeBR(mov.date)}
                       </td>
                       <td className="py-2.5 px-3 font-mono font-bold text-orange-700">
-                        {mov.requisitionNumber || 'Avulsa'}
+                        <div>{mov.requisitionNumber || 'Avulsa'}</div>
+                        {mov.stampedNumber && (
+                          <span className="text-[10px] text-orange-800 bg-orange-100 border border-orange-200 px-1.5 py-0.2 rounded font-mono block mt-0.5 w-fit">
+                            Carimbo: {mov.stampedNumber}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 px-3">
                         <span className="font-bold text-slate-900 bg-orange-50 text-orange-800 px-2 py-0.5 rounded border border-orange-200 text-[11px] inline-flex items-center gap-1">

@@ -12,6 +12,12 @@ import {
   UserRole,
   Region,
   ExcelSyncLog,
+  Vehicle,
+  FuelingRecord,
+  MaintenancePlan,
+  ServiceOrder,
+  ServiceOrderPartItem,
+  VehicleTimelineEvent,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -27,6 +33,10 @@ const STORAGE_KEYS = {
   EXCEL_LOGS: 'cplu_excel_logs_v1',
   IDEMPOTENCY_KEYS: 'cplu_idempotency_keys_v1',
   IS_DEMO: 'cplu_is_demo_data_v1',
+  VEHICLES: 'cplu_vehicles_v1',
+  FUELINGS: 'cplu_fuelings_v1',
+  MAINTENANCE_PLANS: 'cplu_maintenance_plans_v1',
+  SERVICE_ORDERS: 'cplu_service_orders_v1',
 };
 
 // Initial realistic seed dataset for Limpeza Urbana operations
@@ -83,6 +93,34 @@ export const SEED_REGIONS: Region[] = [
 
 // Initial realistic seed dataset for Limpeza Urbana operations with official IKKI codes and physical locations
 export const SEED_MATERIALS: Material[] = [
+  {
+    id: 'mat-020',
+    code: '005230',
+    ikkiCode: '005230',
+    name: 'Calça de Brim Azul Operacional',
+    description: 'Calça operacional em brim 100% algodão azul royal com reforço entrepernas e elástico total.',
+    category: 'Uniformes',
+    unit: 'UN',
+    currentStock: 50,
+    minStock: 20,
+    location: 'Galpão A - Almoxarifado Central',
+    shelf: 'Corredor 2, Prat. 3, Nív. 2',
+    physicalLocations: [
+      {
+        id: 'loc-020-1',
+        aisle: 'Corredor 2',
+        shelf: 'Prateleira 3',
+        level: 'Nível 2',
+        quantity: 50,
+        updatedAt: '2026-03-01T08:00:00Z',
+      },
+    ],
+    status: 'ativo',
+    supplier: 'Tecidos & Uniformes Brasil',
+    isEpi: false,
+    createdAt: '2026-01-10T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
   {
     id: 'mat-001',
     code: '001420',
@@ -326,6 +364,152 @@ export const SEED_MATERIALS: Material[] = [
     createdAt: '2026-01-12T11:00:00Z',
     updatedAt: '2026-02-22T09:00:00Z',
   },
+  {
+    id: 'mat-mec-001',
+    code: '008120',
+    ikkiCode: '008120',
+    name: 'Óleo Lubrificante 15W40 Mineral Motor Diesel',
+    description: 'Óleo mineral multiviscoso API CI-4 para motores pesados de caminhões coletores.',
+    category: 'Peças & Mecânica',
+    unit: 'LT',
+    currentStock: 240,
+    minStock: 60,
+    location: 'Galpão Mecânica - Lubrificantes',
+    shelf: 'Corredor M1, Prat. 1, Nív. 1',
+    physicalLocations: [
+      {
+        id: 'loc-mec-001',
+        aisle: 'Corredor M1',
+        shelf: 'Prateleira 1',
+        level: 'Nível 1',
+        quantity: 240,
+        updatedAt: '2026-03-01T08:00:00Z',
+      },
+    ],
+    status: 'ativo',
+    supplier: 'Lubrificantes Ipiranga / Mobil',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-002',
+    code: '008121',
+    ikkiCode: '008121',
+    name: 'Filtro de Óleo Lubrificante Motor MB/VW',
+    description: 'Elemento filtrante blindado de alta retenção para caminhões compactadores Atego e Constellation.',
+    category: 'Peças & Mecânica',
+    unit: 'UN',
+    currentStock: 18,
+    minStock: 6,
+    location: 'Galpão Mecânica - Filtros',
+    shelf: 'Corredor M1, Prat. 2, Nív. 2',
+    physicalLocations: [
+      {
+        id: 'loc-mec-002',
+        aisle: 'Corredor M1',
+        shelf: 'Prateleira 2',
+        level: 'Nível 2',
+        quantity: 18,
+        updatedAt: '2026-03-01T08:00:00Z',
+      },
+    ],
+    status: 'ativo',
+    supplier: 'Mann-Filter Brasil',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-003',
+    code: '008122',
+    ikkiCode: '008122',
+    name: 'Filtro Separador Combustível / Água Racor',
+    description: 'Filtro sedimentador com dreno para proteção do sistema de injeção Common Rail contra umidade do diesel.',
+    category: 'Peças & Mecânica',
+    unit: 'UN',
+    currentStock: 14,
+    minStock: 5,
+    location: 'Galpão Mecânica - Filtros',
+    shelf: 'Corredor M1, Prat. 2, Nív. 3',
+    status: 'ativo',
+    supplier: 'Parker Hannifin',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-004',
+    code: '008123',
+    ikkiCode: '008123',
+    name: 'Jogo de Pastilhas de Freio Dianteiro Heavy Duty',
+    description: 'Conjunto de pastilhas sinterizadas para freio a disco pneumático de eixos dianteiros.',
+    category: 'Peças & Mecânica',
+    unit: 'PAR',
+    currentStock: 8,
+    minStock: 4,
+    location: 'Galpão Mecânica - Freios',
+    shelf: 'Corredor M2, Prat. 1, Nív. 2',
+    status: 'ativo',
+    supplier: 'Fras-le Peças Automotivas',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-005',
+    code: '008124',
+    ikkiCode: '008124',
+    name: 'Chapa de Desgaste da Prensa Compactadora',
+    description: 'Chapa de aço Hardox 450 antidesgaste para calha de compressão do compactador traseiro.',
+    category: 'Peças & Mecânica',
+    unit: 'UN',
+    currentStock: 3,
+    minStock: 2,
+    location: 'Galpão Mecânica - Caldeiraria',
+    shelf: 'Palete Metal 03',
+    status: 'ativo',
+    supplier: 'Usicamp Caçambas',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-006',
+    code: '008125',
+    ikkiCode: '008125',
+    name: 'Pneu Radial 275/80 R22.5 Borrachudo de Tração',
+    description: 'Pneu para eixo de tração com desenho misto e alta durabilidade para tráfego urbano e transbordo.',
+    category: 'Peças & Mecânica',
+    unit: 'UN',
+    currentStock: 12,
+    minStock: 6,
+    location: 'Galpão Mecânica - Pátio Pneus',
+    shelf: 'Rack de Pneus 01',
+    status: 'ativo',
+    supplier: 'Michelin Brasil / Bridgestone',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'mat-mec-007',
+    code: '008126',
+    ikkiCode: '008126',
+    name: 'Graxa Especial de Lítio EP-2 com Bissulfeto (Balde 20kg)',
+    description: 'Graxa de alta adesividade e extrema pressão para articulações da caçamba e pinos de compactadores.',
+    category: 'Peças & Mecânica',
+    unit: 'KG',
+    currentStock: 60,
+    minStock: 20,
+    location: 'Galpão Mecânica - Lubrificantes',
+    shelf: 'Corredor M1, Prat. 1, Nív. Chão',
+    status: 'ativo',
+    supplier: 'Texaco / Shell',
+    isEpi: false,
+    createdAt: '2026-01-15T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
 ];
 
 export const SEED_EMPLOYEES: Employee[] = [
@@ -550,6 +734,9 @@ export const SEED_REQUISITIONS: Requisition[] = [
   {
     id: 'req-001',
     number: 'REQ-2026-0001',
+    stampedNumber: '08-14',
+    regionName: 'Paulista',
+    regionId: 'reg-001',
     employeeId: 'emp-001',
     employeeName: 'Raimundo Nonato da Silva',
     employeeMatricula: 'LU-10452',
@@ -592,6 +779,8 @@ export const SEED_REQUISITIONS: Requisition[] = [
   {
     id: 'req-002',
     number: 'REQ-2026-0002',
+    regionName: 'Penha',
+    regionId: 'reg-003',
     employeeId: 'emp-003',
     employeeName: 'Carlos Eduardo Ferreira',
     employeeMatricula: 'LU-11230',
@@ -896,6 +1085,376 @@ export const SEED_AUDIT_LOGS: AuditLog[] = [
   },
 ];
 
+export const SEED_VEHICLES: Vehicle[] = [
+  {
+    id: 'veh-001',
+    fleetNumber: 'COMP-01',
+    plate: 'CPL-1947',
+    type: 'compactador',
+    brand: 'Mercedes-Benz',
+    model: 'Atego 1729 Compactor 15m³',
+    year: 2023,
+    fuelType: 'diesel_s10',
+    tankCapacityLiters: 210,
+    currentOdometerKm: 48500,
+    currentHourmeterHours: 3820,
+    acquisitionDate: '2023-04-10',
+    subRegion: 'Ipiranga',
+    status: 'disponivel',
+    notes: 'Caminhão compactador principal do setor Ipiranga. Equipado com prensa hidráulica Usicamp.',
+    createdAt: '2023-04-10T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'veh-002',
+    fleetNumber: 'COMP-02',
+    plate: 'BRA2E19',
+    type: 'compactador',
+    brand: 'Volkswagen',
+    model: 'Constellation 17.260 Compactor 15m³',
+    year: 2024,
+    fuelType: 'diesel_s10',
+    tankCapacityLiters: 275,
+    currentOdometerKm: 32400,
+    currentHourmeterHours: 2650,
+    acquisitionDate: '2024-02-15',
+    subRegion: 'Paulista',
+    status: 'em_operacao',
+    notes: 'Operação de coleta noturna e diurna contínua na região da Avenida Paulista.',
+    createdAt: '2024-02-15T08:00:00Z',
+    updatedAt: '2026-03-05T08:00:00Z',
+  },
+  {
+    id: 'veh-003',
+    fleetNumber: 'BASC-01',
+    plate: 'FXP-4180',
+    type: 'basculante',
+    brand: 'Ford',
+    model: 'Cargo 1723 Basculante Caçamba 8m³',
+    year: 2022,
+    fuelType: 'diesel_s10',
+    tankCapacityLiters: 210,
+    currentOdometerKm: 78900,
+    currentHourmeterHours: 2150,
+    acquisitionDate: '2022-07-20',
+    subRegion: 'Taquá',
+    status: 'disponivel',
+    notes: 'Transporte de entulhos de capina, terra e podas pesadas na Regional Taquá.',
+    createdAt: '2022-07-20T08:00:00Z',
+    updatedAt: '2026-02-28T08:00:00Z',
+  },
+  {
+    id: 'veh-004',
+    fleetNumber: 'PIPA-01',
+    plate: 'ETI-9912',
+    type: 'pipa',
+    brand: 'Mercedes-Benz',
+    model: 'Atego 2730 6x4 Pipa 15.000 Litros',
+    year: 2023,
+    fuelType: 'diesel_s10',
+    tankCapacityLiters: 300,
+    currentOdometerKm: 34100,
+    currentHourmeterHours: 1980,
+    acquisitionDate: '2023-09-01',
+    subRegion: 'Sé / Centro',
+    status: 'disponivel',
+    notes: 'Lavagem de feiras livres, calçadões do Centro Histórico e umectação de vias.',
+    createdAt: '2023-09-01T08:00:00Z',
+    updatedAt: '2026-03-10T08:00:00Z',
+  },
+  {
+    id: 'veh-005',
+    fleetNumber: 'APOIO-01',
+    plate: 'RHO-3C44',
+    type: 'apoio',
+    brand: 'Fiat',
+    model: 'Strada Endurance 1.4 Cabine Plus',
+    year: 2024,
+    fuelType: 'gasolina',
+    tankCapacityLiters: 55,
+    currentOdometerKm: 28400,
+    currentHourmeterHours: 740,
+    acquisitionDate: '2024-05-10',
+    subRegion: 'Penha',
+    status: 'disponivel',
+    notes: 'Veículo utilitário de fiscalização operacional e transporte rápido de ferramentas.',
+    createdAt: '2024-05-10T08:00:00Z',
+    updatedAt: '2026-03-08T08:00:00Z',
+  },
+  {
+    id: 'veh-006',
+    fleetNumber: 'COMP-03',
+    plate: 'GDK-7104',
+    type: 'compactador',
+    brand: 'Iveco',
+    model: 'Tector 17-300 Compactor 15m³',
+    year: 2022,
+    fuelType: 'diesel_s10',
+    tankCapacityLiters: 275,
+    currentOdometerKm: 91200,
+    currentHourmeterHours: 6840,
+    acquisitionDate: '2022-03-12',
+    subRegion: 'Santana',
+    status: 'em_manutencao',
+    notes: 'Em manutenção corretiva na oficina central para substituição de vedação de pistão hidráulico.',
+    createdAt: '2022-03-12T08:00:00Z',
+    updatedAt: '2026-03-12T08:00:00Z',
+  },
+];
+
+export const SEED_FUELINGS: FuelingRecord[] = [
+  {
+    id: 'fuel-001',
+    vehicleId: 'veh-001',
+    fleetNumber: 'COMP-01',
+    plate: 'CPL-1947',
+    dateTime: '2026-03-10T07:15:00Z',
+    driverName: 'Antônio Marcos',
+    fuelType: 'diesel_s10',
+    liters: 130,
+    unitPrice: 5.89,
+    totalCost: 765.7,
+    odometerKm: 48500,
+    hourmeterHours: 3820,
+    pumpMeterVolume: 130,
+    pumpId: 'Bomba 01 - Diesel S10 Central',
+    stationLocation: 'Posto Interno CPLU Almoxarifado',
+    documentNumber: 'NF-66401',
+    fullTank: true,
+    kmDistanceSinceLast: 320,
+    calculatedKmPerLiter: 2.46,
+    costPerKm: 2.39,
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-03-10T07:15:00Z',
+  },
+  {
+    id: 'fuel-002',
+    vehicleId: 'veh-001',
+    fleetNumber: 'COMP-01',
+    plate: 'CPL-1947',
+    dateTime: '2026-03-07T06:40:00Z',
+    driverName: 'Antônio Marcos',
+    fuelType: 'diesel_s10',
+    liters: 135,
+    unitPrice: 5.89,
+    totalCost: 795.15,
+    odometerKm: 48180,
+    hourmeterHours: 3795,
+    pumpMeterVolume: 135,
+    pumpId: 'Bomba 01 - Diesel S10 Central',
+    stationLocation: 'Posto Interno CPLU Almoxarifado',
+    documentNumber: 'NF-66250',
+    fullTank: true,
+    kmDistanceSinceLast: 310,
+    calculatedKmPerLiter: 2.30,
+    costPerKm: 2.56,
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-03-07T06:40:00Z',
+  },
+  {
+    id: 'fuel-003',
+    vehicleId: 'veh-002',
+    fleetNumber: 'COMP-02',
+    plate: 'BRA2E19',
+    dateTime: '2026-03-11T19:30:00Z',
+    driverName: 'Sérgio Ricardo',
+    fuelType: 'diesel_s10',
+    liters: 160,
+    unitPrice: 5.89,
+    totalCost: 942.4,
+    odometerKm: 32400,
+    hourmeterHours: 2650,
+    pumpMeterVolume: 160,
+    pumpId: 'Bomba 01 - Diesel S10 Central',
+    stationLocation: 'Posto Interno CPLU Almoxarifado',
+    documentNumber: 'NF-66480',
+    fullTank: true,
+    kmDistanceSinceLast: 410,
+    calculatedKmPerLiter: 2.56,
+    costPerKm: 2.30,
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-03-11T19:30:00Z',
+  },
+  {
+    id: 'fuel-004',
+    vehicleId: 'veh-005',
+    fleetNumber: 'APOIO-01',
+    plate: 'RHO-3C44',
+    dateTime: '2026-03-08T11:00:00Z',
+    driverName: 'Leandro Viana',
+    fuelType: 'gasolina',
+    liters: 42,
+    unitPrice: 6.15,
+    totalCost: 258.3,
+    odometerKm: 28400,
+    hourmeterHours: 740,
+    pumpMeterVolume: 42,
+    pumpId: 'Bomba 03 - Gasolina Conveniada',
+    stationLocation: 'Posto Conveniado Shell Radial',
+    documentNumber: 'CUPOM-88319',
+    fullTank: true,
+    kmDistanceSinceLast: 480,
+    calculatedKmPerLiter: 11.43,
+    costPerKm: 0.54,
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-03-08T11:00:00Z',
+  },
+];
+
+export const SEED_MAINTENANCE_PLANS: MaintenancePlan[] = [
+  {
+    id: 'plan-001',
+    vehicleId: 'veh-001',
+    fleetNumber: 'COMP-01',
+    serviceCategory: 'Troca de Óleo de Motor & Filtros',
+    description: 'Substituição de óleo 15W40 CI-4 e troca dos filtros de óleo e separador de combustível.',
+    intervalKm: 10000,
+    intervalHours: 250,
+    lastExecutedDate: '2026-01-20T08:00:00Z',
+    lastExecutedKm: 40000,
+    lastExecutedHours: 3600,
+    nextDueKm: 50000,
+    nextDueHours: 3850,
+    nextDueDate: '2026-04-20',
+    status: 'proxima',
+    createdAt: '2026-01-01T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'plan-002',
+    vehicleId: 'veh-001',
+    fleetNumber: 'COMP-01',
+    serviceCategory: 'Engraxamento de Chassi e Pinos da Prensa',
+    description: 'Engraxamento minucioso dos pinos, mancais da caçamba e articulações da prensa hidráulica com graxa de lítio.',
+    intervalHours: 100,
+    intervalDays: 15,
+    lastExecutedDate: '2026-03-01T08:00:00Z',
+    lastExecutedKm: 47800,
+    lastExecutedHours: 3750,
+    nextDueHours: 3850,
+    nextDueDate: '2026-03-16',
+    status: 'em_dia',
+    createdAt: '2026-01-01T08:00:00Z',
+    updatedAt: '2026-03-01T08:00:00Z',
+  },
+  {
+    id: 'plan-003',
+    vehicleId: 'veh-006',
+    fleetNumber: 'COMP-03',
+    serviceCategory: 'Revisão do Sistema de Freios e Cuícas',
+    description: 'Inspeção de pastilhas, lonas, tambores e cuícas pneumáticas de acionamento.',
+    intervalKm: 15000,
+    lastExecutedDate: '2025-10-10T08:00:00Z',
+    lastExecutedKm: 75000,
+    lastExecutedHours: 5900,
+    nextDueKm: 90000,
+    nextDueDate: '2026-02-15',
+    status: 'vencida',
+    createdAt: '2025-10-10T08:00:00Z',
+    updatedAt: '2026-03-10T08:00:00Z',
+  },
+  {
+    id: 'plan-004',
+    vehicleId: 'veh-002',
+    fleetNumber: 'COMP-02',
+    serviceCategory: 'Troca de Óleo de Motor & Filtros',
+    description: 'Revisão periódica motor Man D08 4 cilindros com óleo sintético/mineral.',
+    intervalKm: 10000,
+    intervalHours: 250,
+    lastExecutedDate: '2026-02-05T08:00:00Z',
+    lastExecutedKm: 25000,
+    lastExecutedHours: 2420,
+    nextDueKm: 35000,
+    nextDueHours: 2670,
+    nextDueDate: '2026-05-05',
+    status: 'em_dia',
+    createdAt: '2026-02-05T08:00:00Z',
+    updatedAt: '2026-02-05T08:00:00Z',
+  },
+];
+
+export const SEED_SERVICE_ORDERS: ServiceOrder[] = [
+  {
+    id: 'os-001',
+    orderNumber: 'OS-2026-0001',
+    vehicleId: 'veh-001',
+    fleetNumber: 'COMP-01',
+    plate: 'CPL-1947',
+    openedAt: '2026-01-20T08:30:00Z',
+    closedAt: '2026-01-20T16:00:00Z',
+    type: 'preventiva',
+    priority: 'normal',
+    status: 'concluida',
+    description: 'Manutenção preventiva programada de 40.000 km (Troca de óleo de motor e filtros).',
+    diagnosis: 'Veículo em perfeito estado mecânico geral. Necessitou apenas troca rotineira de óleo e filtros.',
+    servicesRendered: 'Substituição de 28 litros de óleo 15W40, troca do filtro de óleo lubrificante e dreno do sedimentador.',
+    odometerKm: 40000,
+    hourmeterHours: 3600,
+    partsUsed: [
+      {
+        materialId: 'mat-mec-001',
+        code: '008120',
+        name: 'Óleo Lubrificante 15W40 Mineral Motor Diesel',
+        quantity: 28,
+        unitCost: 28.5,
+        totalCost: 798,
+      },
+      {
+        materialId: 'mat-mec-002',
+        code: '008121',
+        name: 'Filtro de Óleo Lubrificante Motor MB/VW',
+        quantity: 1,
+        unitCost: 95,
+        totalCost: 95,
+      },
+    ],
+    laborCost: 250,
+    externalCost: 0,
+    totalCost: 1143,
+    downtimeHours: 7.5,
+    mechanicName: 'José Valdir Mendonça',
+    workshop: 'Oficina Interna CPLU',
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-01-20T08:30:00Z',
+    updatedAt: '2026-01-20T16:00:00Z',
+  },
+  {
+    id: 'os-002',
+    orderNumber: 'OS-2026-0002',
+    vehicleId: 'veh-006',
+    fleetNumber: 'COMP-03',
+    plate: 'GDK-7104',
+    openedAt: '2026-03-12T08:00:00Z',
+    type: 'corretiva',
+    priority: 'alta',
+    status: 'em_execucao',
+    description: 'Vazamento excessivo de fluido hidráulico na haste do pistão da prensa traseira.',
+    diagnosis: 'Retentor da haste danificado por resíduo cortante; necessária substituição de reparos e chapa guia.',
+    servicesRendered: 'Desmontagem do cilindro hidráulico para brunimento e troca dos anéis raspadores.',
+    odometerKm: 91200,
+    hourmeterHours: 6840,
+    partsUsed: [
+      {
+        materialId: 'mat-mec-007',
+        code: '008126',
+        name: 'Graxa Especial de Lítio EP-2 com Bissulfeto (Balde 20kg)',
+        quantity: 5,
+        unitCost: 42,
+        totalCost: 210,
+      },
+    ],
+    laborCost: 400,
+    externalCost: 650,
+    totalCost: 1260,
+    downtimeHours: 24,
+    mechanicName: 'José Valdir Mendonça',
+    workshop: 'Oficina Interna CPLU',
+    createdByUserName: 'Marcos Vinícius Dias',
+    createdAt: '2026-03-12T08:00:00Z',
+    updatedAt: '2026-03-12T10:00:00Z',
+  },
+];
+
 // In-memory mutex for atomic transactions
 let isTransactionLocked = false;
 const listeners: (() => void)[] = [];
@@ -962,8 +1521,92 @@ export const dbService = {
 
     if (!localStorage.getItem(STORAGE_KEYS.MATERIALS)) {
       this.resetToSeedData();
-    } else if (!localStorage.getItem(STORAGE_KEYS.REGIONS)) {
-      localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(SEED_REGIONS));
+    } else {
+      // Ensure Ipiranga exists in stored regions
+      const regionsRaw = localStorage.getItem(STORAGE_KEYS.REGIONS);
+      if (!regionsRaw) {
+        localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(SEED_REGIONS));
+      } else {
+        const regs: Region[] = JSON.parse(regionsRaw);
+        if (!regs.some((r) => r.name.toLowerCase() === 'ipiranga')) {
+          regs.push({
+            id: 'reg-006',
+            code: 'REG-IPR',
+            name: 'Ipiranga',
+            supervisor: 'Eduardo Martins',
+            active: true,
+            createdAt: '2026-01-01T08:00:00Z',
+          });
+          localStorage.setItem(STORAGE_KEYS.REGIONS, JSON.stringify(regs));
+        }
+      }
+
+      // Ensure 005230 (Calça de Brim Azul Operacional) exists in stored materials
+      const matsRaw = localStorage.getItem(STORAGE_KEYS.MATERIALS);
+      if (matsRaw) {
+        const mats: Material[] = JSON.parse(matsRaw);
+        if (!mats.some((m) => m.code === '005230' || m.name.toLowerCase().includes('calça de brim azul'))) {
+          mats.unshift({
+            id: 'mat-020',
+            code: '005230',
+            ikkiCode: '005230',
+            name: 'Calça de Brim Azul Operacional',
+            description: 'Calça operacional em brim 100% algodão azul royal com reforço entrepernas e elástico total.',
+            category: 'Uniformes',
+            unit: 'UN',
+            currentStock: 50,
+            minStock: 20,
+            location: 'Galpão A - Almoxarifado Central',
+            shelf: 'Corredor 2, Prat. 3, Nív. 2',
+            physicalLocations: [
+              {
+                id: 'loc-020-1',
+                aisle: 'Corredor 2',
+                shelf: 'Prateleira 3',
+                level: 'Nível 2',
+                quantity: 50,
+                updatedAt: '2026-03-01T08:00:00Z',
+              },
+            ],
+            status: 'ativo',
+            supplier: 'Tecidos & Uniformes Brasil',
+            isEpi: false,
+            createdAt: '2026-01-10T08:00:00Z',
+            updatedAt: '2026-03-01T08:00:00Z',
+          });
+          localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(mats));
+        }
+      }
+
+      // Ensure vehicles are initialized
+      if (!localStorage.getItem(STORAGE_KEYS.VEHICLES)) {
+        localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(SEED_VEHICLES));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.FUELINGS)) {
+        localStorage.setItem(STORAGE_KEYS.FUELINGS, JSON.stringify(SEED_FUELINGS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.MAINTENANCE_PLANS)) {
+        localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(SEED_MAINTENANCE_PLANS));
+      }
+      if (!localStorage.getItem(STORAGE_KEYS.SERVICE_ORDERS)) {
+        localStorage.setItem(STORAGE_KEYS.SERVICE_ORDERS, JSON.stringify(SEED_SERVICE_ORDERS));
+      }
+
+      // Ensure mechanical items exist in stored materials
+      const existingMatsRaw = localStorage.getItem(STORAGE_KEYS.MATERIALS);
+      if (existingMatsRaw) {
+        const existingMats: Material[] = JSON.parse(existingMatsRaw);
+        let updated = false;
+        SEED_MATERIALS.filter((m) => m.category === 'Peças & Mecânica').forEach((mecItem) => {
+          if (!existingMats.some((em) => em.code === mecItem.code)) {
+            existingMats.push(mecItem);
+            updated = true;
+          }
+        });
+        if (updated) {
+          localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(existingMats));
+        }
+      }
     }
   },
 
@@ -984,6 +1627,10 @@ export const dbService = {
     localStorage.setItem(STORAGE_KEYS.EPI_DELIVERIES, JSON.stringify(SEED_DELIVERIES));
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(SEED_AUDIT_LOGS));
     localStorage.setItem(STORAGE_KEYS.EXCEL_LOGS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(SEED_VEHICLES));
+    localStorage.setItem(STORAGE_KEYS.FUELINGS, JSON.stringify(SEED_FUELINGS));
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(SEED_MAINTENANCE_PLANS));
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ORDERS, JSON.stringify(SEED_SERVICE_ORDERS));
     localStorage.setItem(STORAGE_KEYS.IS_DEMO, 'true');
     notifyListeners();
   },
@@ -997,6 +1644,10 @@ export const dbService = {
     localStorage.setItem(STORAGE_KEYS.REQUISITIONS, JSON.stringify([]));
     localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify([]));
     localStorage.setItem(STORAGE_KEYS.EPI_DELIVERIES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.FUELINGS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ORDERS, JSON.stringify([]));
     localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify([
       {
         id: 'log-clean-' + Date.now(),
@@ -1824,9 +2475,9 @@ export const dbService = {
   createRequisition(
     data: {
       requisitionNumber?: string;
-      employeeId: string;
+      regionName: string;
       regionId?: string;
-      regionName?: string;
+      employeeId?: string;
       priority: Requisition['priority'];
       justification?: string;
       observations?: string;
@@ -1835,20 +2486,24 @@ export const dbService = {
     },
     user: { id: string; name: string; role: UserRole; matricula?: string }
   ): { success: boolean; message: string; requisition?: Requisition } {
-    const emp = this.getEmployeeById(data.employeeId);
-    if (!emp) return { success: false, message: 'Funcionário selecionado não existe.' };
+    const cleanRegion = data.regionName?.trim();
+    if (!cleanRegion) {
+      return { success: false, message: 'A região solicitante é obrigatória (ex: Ipiranga, Paulista, etc.).' };
+    }
 
     if (!data.items || data.items.length === 0) {
       return { success: false, message: 'Adicione pelo menos um item à requisição.' };
     }
 
+    const emp = data.employeeId ? this.getEmployeeById(data.employeeId) : undefined;
+
     const materials = this.getMaterials();
     const formattedItems: Requisition['items'] = [];
 
     for (const item of data.items) {
-      const mat = materials.find((m) => m.id === item.materialId);
+      const mat = materials.find((m) => m.id === item.materialId || m.code === item.materialId || m.ikkiCode === item.materialId);
       if (!mat) {
-        return { success: false, message: `Material ID ${item.materialId} não encontrado.` };
+        return { success: false, message: `Material ${item.materialId} não encontrado no catálogo.` };
       }
       if (item.quantityRequested <= 0) {
         return { success: false, message: `A quantidade para ${mat.name} deve ser maior que zero.` };
@@ -1890,29 +2545,30 @@ export const dbService = {
     const now = new Date().toISOString();
     const status: Requisition['status'] = data.isDraft ? 'rascunho' : 'enviada';
 
-    // Resolve region
-    let resolvedRegionId = data.regionId || emp.regionId;
-    let resolvedRegionName = data.regionName || emp.regionName;
-    if (!resolvedRegionName && resolvedRegionId) {
-      const regObj = this.getRegions().find((r) => r.id === resolvedRegionId);
-      if (regObj) resolvedRegionName = regObj.name;
+    // Resolve region ID if available
+    let resolvedRegionId = data.regionId || emp?.regionId;
+    if (!resolvedRegionId) {
+      const regObj = this.getRegions().find(
+        (r) => r.name.toLowerCase() === cleanRegion.toLowerCase()
+      );
+      if (regObj) resolvedRegionId = regObj.id;
     }
 
     const newReq: Requisition = {
       id: 'req-' + Math.random().toString(36).substring(2, 9),
       number: reqNumber,
-      employeeId: emp.id,
-      employeeName: emp.name,
-      employeeMatricula: emp.matricula,
-      sector: emp.sector,
+      regionName: cleanRegion,
       regionId: resolvedRegionId,
-      regionName: resolvedRegionName,
+      employeeId: emp?.id,
+      employeeName: emp?.name,
+      employeeMatricula: emp?.matricula,
+      sector: emp?.sector || cleanRegion,
       status,
       priority: data.priority,
       justification: data.justification?.trim() || 'Requisição técnica de EPIs / Materiais',
       observations: data.observations,
       requestedByUserId: user.id,
-      requestedByName: user.name,
+      requestedByName: user.name, // Nome do Técnico de Segurança responsável pela emissão
       requestedByMatricula: user.matricula,
       sentAt: data.isDraft ? undefined : now,
       isNewNotification: !data.isDraft,
@@ -1932,8 +2588,8 @@ export const dbService = {
       entity: 'Requisition',
       entityId: newReq.id,
       details: data.isDraft
-        ? `Rascunho ${newReq.number} salvo pelo TST ${user.name} (${user.matricula || user.role}) para ${emp.name}.`
-        : `Requisição ${newReq.number} emitida e enviada pelo TST ${user.name} (${user.matricula || user.role}) para ${emp.name} (${emp.matricula}).`,
+        ? `Rascunho ${newReq.number} salvo pelo TST ${user.name} (${user.matricula || user.role}) para a Região ${cleanRegion}.`
+        : `Requisição ${newReq.number} emitida e enviada pelo TST ${user.name} (${user.matricula || user.role}) para a Região ${cleanRegion}.`,
       ipOrSession: 'Sessão Web Segura',
     });
 
@@ -1944,6 +2600,91 @@ export const dbService = {
         ? `Rascunho ${newReq.number} salvo com sucesso!`
         : `Requisição ${newReq.number} enviada ao Almoxarifado em tempo real!`,
       requisition: newReq,
+    };
+  },
+
+  setRequisitionStampedNumber(
+    requisitionId: string,
+    stampedNumber: string,
+    user: { id: string; name: string; role: UserRole }
+  ): { success: boolean; message: string; requisition?: Requisition } {
+    const cleanNum = stampedNumber.trim();
+    if (!cleanNum) {
+      return { success: false, message: 'O número oficial carimbado não pode estar vazio.' };
+    }
+
+    const requisitions = this.getRequisitions();
+    const idx = requisitions.findIndex((r) => r.id === requisitionId);
+    if (idx === -1) {
+      return { success: false, message: 'Requisição não encontrada no sistema.' };
+    }
+
+    // Check duplicate stamped number across other requisitions to prevent collision
+    const duplicate = requisitions.find(
+      (r) =>
+        r.id !== requisitionId &&
+        r.stampedNumber &&
+        r.stampedNumber.trim().toUpperCase() === cleanNum.toUpperCase()
+    );
+    if (duplicate) {
+      return {
+        success: false,
+        message: `O número oficial carimbado "${cleanNum}" já foi registrado na requisição ${duplicate.number}. Cada papel físico possui número único.`,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const req = requisitions[idx];
+    req.stampedNumber = cleanNum;
+    req.stampedAt = now;
+    req.stampedBy = user.name;
+    req.stampedByUserId = user.id;
+    req.updatedAt = now;
+    requisitions[idx] = req;
+
+    localStorage.setItem(STORAGE_KEYS.REQUISITIONS, JSON.stringify(requisitions));
+
+    // Also update any movements or deliveries linked to this requisition
+    const movements = this.getMovements();
+    let movUpdated = false;
+    movements.forEach((m) => {
+      if (m.requisitionId === req.id || m.requisitionNumber === req.number) {
+        m.stampedNumber = cleanNum;
+        movUpdated = true;
+      }
+    });
+    if (movUpdated) {
+      localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
+    }
+
+    const deliveries = this.getEPIDeliveries();
+    let delUpdated = false;
+    deliveries.forEach((d) => {
+      if (d.requisitionId === req.id || d.requisitionNumber === req.number) {
+        d.stampedNumber = cleanNum;
+        delUpdated = true;
+      }
+    });
+    if (delUpdated) {
+      localStorage.setItem(STORAGE_KEYS.EPI_DELIVERIES, JSON.stringify(deliveries));
+    }
+
+    this.addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      action: 'VINCULAR_NUMERO_CARIMBADO',
+      entity: 'Requisition',
+      entityId: req.id,
+      details: `Número oficial carimbado "${cleanNum}" registrado para a requisição ${req.number} (Região ${req.regionName}) por ${user.name} (${user.role}).`,
+      ipOrSession: 'Sessão Web Almoxarifado',
+    });
+
+    notifyListeners();
+    return {
+      success: true,
+      message: `Número carimbado "${cleanNum}" vinculado com sucesso à requisição ${req.number}!`,
+      requisition: req,
     };
   },
 
@@ -2133,7 +2874,7 @@ export const dbService = {
       const now = new Date().toISOString();
       const movements = this.getMovements();
 
-      const emp = this.getEmployeeById(req.employeeId);
+      const emp = req.employeeId ? this.getEmployeeById(req.employeeId) : undefined;
       const resolvedRegionId = req.regionId || emp?.regionId;
       const resolvedRegionName = req.regionName || emp?.regionName;
 
@@ -2183,7 +2924,7 @@ export const dbService = {
           userName: user.name,
           userRole: user.role,
           location: mat.location,
-          sector: req.sector,
+          sector: req.sector || req.regionName,
           employeeId: req.employeeId,
           employeeName: req.employeeName,
           employeeMatricula: req.employeeMatricula,
@@ -2191,8 +2932,9 @@ export const dbService = {
           regionName: resolvedRegionName,
           requisitionId: req.id,
           requisitionNumber: req.number,
+          stampedNumber: req.stampedNumber,
           idempotencyKey: params.idempotencyKey,
-          observation: `Atendimento de requisição ${req.number} - Comprovante NR-6`,
+          observation: `Atendimento de requisição ${req.number}${req.stampedNumber ? ` (Nº Carimbado: ${req.stampedNumber})` : ''} - Região: ${resolvedRegionName}`,
         });
 
         // Update requisition item delivered quantity and status
@@ -2220,10 +2962,11 @@ export const dbService = {
         id: deliveryId,
         requisitionId: req.id,
         requisitionNumber: req.number,
+        stampedNumber: req.stampedNumber,
         employeeId: req.employeeId,
         employeeName: req.employeeName,
         employeeMatricula: req.employeeMatricula,
-        sector: req.sector,
+        sector: req.sector || req.regionName,
         regionId: resolvedRegionId,
         regionName: resolvedRegionName,
         deliveredByUserId: user.id,
@@ -2819,7 +3562,7 @@ export const dbService = {
           id: 'alert-req-' + r.id,
           type: 'PENDING_REQ',
           title: `Requisição Urgente Pendente: ${r.number}`,
-          message: `Solicitação para ${r.employeeName} (${r.sector}) aguardando atendimento do almoxarife.`,
+          message: `Solicitação para ${r.employeeName || r.regionName} (${r.sector || r.regionName}) aguardando atendimento do almoxarife.`,
           severity: r.priority === 'critica' ? 'danger' : 'warning',
           date: r.createdAt,
           resolved: false,
@@ -2827,6 +3570,626 @@ export const dbService = {
         });
       });
 
+    // Check overdue maintenance plans
+    const maintenancePlans = this.getMaintenancePlans();
+    maintenancePlans
+      .filter((p) => p.status === 'vencida')
+      .forEach((p) => {
+        alerts.push({
+          id: 'alert-maint-' + p.id,
+          type: 'CRITICAL_STOCK',
+          title: `Manutenção Vencida: ${p.fleetNumber}`,
+          message: `O plano "${p.serviceCategory}" para o veículo ${p.fleetNumber} está VENCIDO e requer intervenção mecânica imediata.`,
+          severity: 'danger',
+          date: p.updatedAt,
+          resolved: false,
+        });
+      });
+
     return alerts;
+  },
+
+  // ==========================================
+  // MÓDULO MECÂNICA E GESTÃO DE FROTA
+  // ==========================================
+
+  getVehicles(): Vehicle[] {
+    if (typeof window === 'undefined') return SEED_VEHICLES;
+    const raw = localStorage.getItem(STORAGE_KEYS.VEHICLES);
+    return raw ? JSON.parse(raw) : SEED_VEHICLES;
+  },
+
+  getVehicleById(id: string): Vehicle | undefined {
+    return this.getVehicles().find((v) => v.id === id);
+  },
+
+  getVehicleByFleetNumber(fleetNumber: string): Vehicle | undefined {
+    return this.getVehicles().find((v) => v.fleetNumber.toUpperCase() === fleetNumber.trim().toUpperCase());
+  },
+
+  createVehicle(data: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt'>): Vehicle {
+    const vehicles = this.getVehicles();
+    const now = new Date().toISOString();
+    const newVehicle: Vehicle = {
+      ...data,
+      id: 'veh-' + Date.now(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    vehicles.unshift(newVehicle);
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
+
+    this.addAuditLog({
+      action: 'CADASTRAR_VEICULO',
+      entity: 'System',
+      entityId: newVehicle.id,
+      details: `Novo veículo cadastrado na frota: ${newVehicle.fleetNumber} (${newVehicle.plate}) - ${newVehicle.model} - Sub-região: ${newVehicle.subRegion}`,
+    });
+
+    notifyListeners();
+    return newVehicle;
+  },
+
+  updateVehicle(id: string, updates: Partial<Vehicle>): Vehicle {
+    const vehicles = this.getVehicles();
+    const idx = vehicles.findIndex((v) => v.id === id);
+    if (idx === -1) throw new Error(`Veículo com id ${id} não encontrado.`);
+
+    const updatedVehicle: Vehicle = {
+      ...vehicles[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    vehicles[idx] = updatedVehicle;
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(vehicles));
+
+    this.addAuditLog({
+      action: 'ATUALIZAR_VEICULO',
+      entity: 'System',
+      entityId: id,
+      details: `Dados do veículo ${updatedVehicle.fleetNumber} (${updatedVehicle.plate}) atualizados. Status: ${updatedVehicle.status}`,
+    });
+
+    notifyListeners();
+    return updatedVehicle;
+  },
+
+  deleteVehicle(id: string): void {
+    const vehicles = this.getVehicles();
+    const target = vehicles.find((v) => v.id === id);
+    const filtered = vehicles.filter((v) => v.id !== id);
+    localStorage.setItem(STORAGE_KEYS.VEHICLES, JSON.stringify(filtered));
+
+    if (target) {
+      this.addAuditLog({
+        action: 'EXCLUIR_VEICULO',
+        entity: 'System',
+        entityId: id,
+        details: `Veículo ${target.fleetNumber} (${target.plate}) removido do sistema.`,
+      });
+    }
+
+    notifyListeners();
+  },
+
+  // ------------------------------------------
+  // ABASTECIMENTO (FUELINGS)
+  // ------------------------------------------
+
+  getFuelings(vehicleId?: string): FuelingRecord[] {
+    if (typeof window === 'undefined') return SEED_FUELINGS;
+    const raw = localStorage.getItem(STORAGE_KEYS.FUELINGS);
+    const fuelings: FuelingRecord[] = raw ? JSON.parse(raw) : SEED_FUELINGS;
+    if (vehicleId) {
+      return fuelings.filter((f) => f.vehicleId === vehicleId);
+    }
+    return fuelings.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
+  },
+
+  registerFueling(data: {
+    vehicleId: string;
+    fleetNumber: string;
+    plate: string;
+    dateTime: string;
+    driverName?: string;
+    fuelType: Vehicle['fuelType'];
+    liters: number;
+    unitPrice: number;
+    totalCost: number;
+    odometerKm: number;
+    hourmeterHours: number;
+    pumpMeterVolume: number;
+    pumpId?: string;
+    stationLocation: string;
+    documentNumber?: string;
+    fullTank: boolean;
+    notes?: string;
+    createdByUserName: string;
+    allowOdometerOverride?: boolean;
+  }): { success: boolean; error?: string; record?: FuelingRecord } {
+    const vehicles = this.getVehicles();
+    const vehicle = vehicles.find((v) => v.id === data.vehicleId);
+    if (!vehicle) {
+      return { success: false, error: 'Veículo selecionado não encontrado na frota.' };
+    }
+
+    // Previous fuelings for this vehicle
+    const vehicleFuelings = this.getFuelings(vehicle.id).sort(
+      (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime()
+    );
+    const lastFueling = vehicleFuelings[vehicleFuelings.length - 1];
+
+    const prevOdometer = lastFueling ? lastFueling.odometerKm : vehicle.currentOdometerKm;
+
+    // Strict validation: Odometer must be >= previous recorded odometer unless override explicitly authorized
+    if (data.odometerKm < prevOdometer && !data.allowOdometerOverride) {
+      return {
+        success: false,
+        error: `Odômetro informado (${data.odometerKm.toLocaleString()} km) é MENOR que o último registro (${prevOdometer.toLocaleString()} km). Verifique a leitura no painel ou marque a justificativa de override.`,
+      };
+    }
+
+    let kmDistanceSinceLast: number | undefined = undefined;
+    let calculatedKmPerLiter: number | undefined = undefined;
+    let costPerKm: number | undefined = undefined;
+    let anomalyAlert: string | undefined = undefined;
+
+    if (data.odometerKm > prevOdometer) {
+      kmDistanceSinceLast = data.odometerKm - prevOdometer;
+      if (data.fullTank && data.liters > 0) {
+        calculatedKmPerLiter = Number((kmDistanceSinceLast / data.liters).toFixed(2));
+        costPerKm = Number((data.totalCost / kmDistanceSinceLast).toFixed(2));
+
+        // Anomaly checks based on vehicle type
+        if (vehicle.type === 'compactador') {
+          // Compactors typically get 1.5 - 3.8 km/L due to continuous PTO hydraulic compaction
+          if (calculatedKmPerLiter < 1.1) {
+            anomalyAlert = `Atenção: Consumo elevado detectado (${calculatedKmPerLiter} km/L). Verificar se houve operação prolongada de prensa ou vazamento.`;
+          } else if (calculatedKmPerLiter > 4.5) {
+            anomalyAlert = `Atenção: Média calculada incomumente alta (${calculatedKmPerLiter} km/L). Verifique se o odômetro anterior estava correto.`;
+          }
+        } else if (vehicle.type === 'apoio') {
+          if (calculatedKmPerLiter < 6.0) {
+            anomalyAlert = `Atenção: Consumo anormal para veículo leve (${calculatedKmPerLiter} km/L).`;
+          }
+        }
+      }
+    }
+
+    const newRecord: FuelingRecord = {
+      id: 'fuel-' + Date.now(),
+      vehicleId: data.vehicleId,
+      fleetNumber: data.fleetNumber,
+      plate: data.plate,
+      dateTime: data.dateTime || new Date().toISOString(),
+      driverName: data.driverName?.trim() || undefined,
+      fuelType: data.fuelType,
+      liters: Number(data.liters),
+      unitPrice: Number(data.unitPrice),
+      totalCost: Number(data.totalCost),
+      odometerKm: Number(data.odometerKm),
+      hourmeterHours: Number(data.hourmeterHours),
+      pumpMeterVolume: Number(data.pumpMeterVolume),
+      pumpId: data.pumpId,
+      stationLocation: data.stationLocation,
+      documentNumber: data.documentNumber?.trim(),
+      fullTank: data.fullTank,
+      kmDistanceSinceLast,
+      calculatedKmPerLiter,
+      costPerKm,
+      notes: data.notes?.trim(),
+      anomalyAlert,
+      createdByUserName: data.createdByUserName,
+      createdAt: new Date().toISOString(),
+    };
+
+    const allFuelings = this.getFuelings();
+    allFuelings.unshift(newRecord);
+    localStorage.setItem(STORAGE_KEYS.FUELINGS, JSON.stringify(allFuelings));
+
+    // Update vehicle current readings
+    this.updateVehicle(vehicle.id, {
+      currentOdometerKm: Math.max(vehicle.currentOdometerKm, data.odometerKm),
+      currentHourmeterHours: Math.max(vehicle.currentHourmeterHours, data.hourmeterHours),
+    });
+
+    this.addAuditLog({
+      action: 'REGISTRAR_ABASTECIMENTO',
+      entity: 'System',
+      entityId: newRecord.id,
+      details: `Abastecimento registrado para ${vehicle.fleetNumber}: ${data.liters}L (${data.fuelType}) no valor de R$ ${data.totalCost.toFixed(2)}. Odômetro: ${data.odometerKm} km. Medidor Bomba: ${data.pumpMeterVolume}L.`,
+    });
+
+    // Recheck maintenance plans for this vehicle since mileage/hours updated
+    this.checkMaintenancePlanStatusForVehicle(vehicle.id);
+
+    notifyListeners();
+    return { success: true, record: newRecord };
+  },
+
+  // ------------------------------------------
+  // MANUTENÇÃO PREVENTIVA (PLANS)
+  // ------------------------------------------
+
+  getMaintenancePlans(vehicleId?: string): MaintenancePlan[] {
+    if (typeof window === 'undefined') return SEED_MAINTENANCE_PLANS;
+    const raw = localStorage.getItem(STORAGE_KEYS.MAINTENANCE_PLANS);
+    const plans: MaintenancePlan[] = raw ? JSON.parse(raw) : SEED_MAINTENANCE_PLANS;
+    if (vehicleId) {
+      return plans.filter((p) => p.vehicleId === vehicleId);
+    }
+    return plans;
+  },
+
+  createMaintenancePlan(data: Omit<MaintenancePlan, 'id' | 'createdAt' | 'updatedAt' | 'status'>): MaintenancePlan {
+    const plans = this.getMaintenancePlans();
+    const now = new Date().toISOString();
+    const vehicle = this.getVehicleById(data.vehicleId);
+
+    // Compute initial status
+    let status: MaintenancePlan['status'] = 'em_dia';
+    if (vehicle) {
+      if (data.nextDueKm && vehicle.currentOdometerKm >= data.nextDueKm) status = 'vencida';
+      else if (data.nextDueKm && vehicle.currentOdometerKm >= data.nextDueKm - 500) status = 'proxima';
+      else if (data.nextDueHours && vehicle.currentHourmeterHours >= data.nextDueHours) status = 'vencida';
+      else if (data.nextDueDate && new Date(data.nextDueDate).getTime() <= Date.now()) status = 'vencida';
+    }
+
+    const newPlan: MaintenancePlan = {
+      ...data,
+      id: 'plan-' + Date.now(),
+      status,
+      createdAt: now,
+      updatedAt: now,
+    };
+    plans.push(newPlan);
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(plans));
+
+    this.addAuditLog({
+      action: 'CRIAR_PLANO_PREVENTIVO',
+      entity: 'System',
+      entityId: newPlan.id,
+      details: `Novo plano de manutenção preventiva cadastrado para ${data.fleetNumber}: ${data.serviceCategory}`,
+    });
+
+    notifyListeners();
+    return newPlan;
+  },
+
+  updateMaintenancePlan(id: string, updates: Partial<MaintenancePlan>): MaintenancePlan {
+    const plans = this.getMaintenancePlans();
+    const idx = plans.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error(`Plano com id ${id} não encontrado.`);
+
+    const updatedPlan: MaintenancePlan = {
+      ...plans[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    plans[idx] = updatedPlan;
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(plans));
+    notifyListeners();
+    return updatedPlan;
+  },
+
+  deleteMaintenancePlan(id: string): void {
+    const plans = this.getMaintenancePlans();
+    const filtered = plans.filter((p) => p.id !== id);
+    localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(filtered));
+    notifyListeners();
+  },
+
+  checkMaintenancePlanStatusForVehicle(vehicleId: string) {
+    const vehicle = this.getVehicleById(vehicleId);
+    if (!vehicle) return;
+    const plans = this.getMaintenancePlans(vehicleId);
+    let changed = false;
+
+    plans.forEach((plan) => {
+      let newStatus: MaintenancePlan['status'] = 'em_dia';
+      if (plan.nextDueKm && vehicle.currentOdometerKm >= plan.nextDueKm) {
+        newStatus = 'vencida';
+      } else if (plan.nextDueKm && vehicle.currentOdometerKm >= plan.nextDueKm - 500) {
+        newStatus = 'proxima';
+      } else if (plan.nextDueHours && vehicle.currentHourmeterHours >= plan.nextDueHours) {
+        newStatus = 'vencida';
+      } else if (plan.nextDueHours && vehicle.currentHourmeterHours >= plan.nextDueHours - 20) {
+        newStatus = 'proxima';
+      } else if (plan.nextDueDate) {
+        const dueTime = new Date(plan.nextDueDate).getTime();
+        const diffDays = Math.ceil((dueTime - Date.now()) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 0) newStatus = 'vencida';
+        else if (diffDays <= 7) newStatus = 'proxima';
+      }
+
+      if (newStatus !== plan.status) {
+        plan.status = newStatus;
+        plan.updatedAt = new Date().toISOString();
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      const allPlans = this.getMaintenancePlans();
+      const updatedAll = allPlans.map((p) => {
+        const found = plans.find((x) => x.id === p.id);
+        return found || p;
+      });
+      localStorage.setItem(STORAGE_KEYS.MAINTENANCE_PLANS, JSON.stringify(updatedAll));
+    }
+  },
+
+  // ------------------------------------------
+  // ORDENS DE SERVIÇO (SERVICE ORDERS)
+  // ------------------------------------------
+
+  getServiceOrders(vehicleId?: string): ServiceOrder[] {
+    if (typeof window === 'undefined') return SEED_SERVICE_ORDERS;
+    const raw = localStorage.getItem(STORAGE_KEYS.SERVICE_ORDERS);
+    const orders: ServiceOrder[] = raw ? JSON.parse(raw) : SEED_SERVICE_ORDERS;
+    if (vehicleId) {
+      return orders.filter((o) => o.vehicleId === vehicleId);
+    }
+    return orders.sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
+  },
+
+  getServiceOrderById(id: string): ServiceOrder | undefined {
+    return this.getServiceOrders().find((o) => o.id === id);
+  },
+
+  getNextServiceOrderNumber(): string {
+    const year = new Date().getFullYear();
+    const orders = this.getServiceOrders();
+    const currentYearOrders = orders.filter((o) => o.orderNumber.startsWith(`OS-${year}`));
+    const nextSeq = currentYearOrders.length + 1;
+    return `OS-${year}-${String(nextSeq).padStart(4, '0')}`;
+  },
+
+  createServiceOrder(data: Omit<ServiceOrder, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>): ServiceOrder {
+    const orders = this.getServiceOrders();
+    const now = new Date().toISOString();
+    const orderNumber = this.getNextServiceOrderNumber();
+
+    const partsCost = (data.partsUsed || []).reduce((acc, p) => acc + (p.totalCost || 0), 0);
+    const totalCost = partsCost + (data.laborCost || 0) + (data.externalCost || 0);
+
+    const newOrder: ServiceOrder = {
+      ...data,
+      id: 'os-' + Date.now(),
+      orderNumber,
+      partsUsed: data.partsUsed || [],
+      laborCost: data.laborCost || 0,
+      externalCost: data.externalCost || 0,
+      totalCost,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    orders.unshift(newOrder);
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ORDERS, JSON.stringify(orders));
+
+    // If vehicle status needs to be set to em_manutencao
+    if (newOrder.status !== 'concluida' && newOrder.status !== 'cancelada') {
+      const vehicle = this.getVehicleById(newOrder.vehicleId);
+      if (vehicle && vehicle.status === 'disponivel') {
+        this.updateVehicle(vehicle.id, { status: 'em_manutencao' });
+      }
+    }
+
+    this.addAuditLog({
+      action: 'ABRIR_ORDEM_SERVICO',
+      entity: 'System',
+      entityId: newOrder.id,
+      details: `Ordem de Serviço ${newOrder.orderNumber} aberta para o veículo ${newOrder.fleetNumber} (${newOrder.plate}). Tipo: ${newOrder.type} - Prioridade: ${newOrder.priority}`,
+    });
+
+    notifyListeners();
+    return newOrder;
+  },
+
+  updateServiceOrder(id: string, updates: Partial<ServiceOrder>): ServiceOrder {
+    const orders = this.getServiceOrders();
+    const idx = orders.findIndex((o) => o.id === id);
+    if (idx === -1) throw new Error(`Ordem de serviço ${id} não encontrada.`);
+
+    const current = orders[idx];
+    const partsUsed = updates.partsUsed !== undefined ? updates.partsUsed : current.partsUsed;
+    const laborCost = updates.laborCost !== undefined ? updates.laborCost : current.laborCost;
+    const externalCost = updates.externalCost !== undefined ? updates.externalCost : current.externalCost;
+    const partsCost = partsUsed.reduce((acc, p) => acc + (p.totalCost || 0), 0);
+    const totalCost = partsCost + laborCost + externalCost;
+
+    const updatedOrder: ServiceOrder = {
+      ...current,
+      ...updates,
+      partsUsed,
+      laborCost,
+      externalCost,
+      totalCost,
+      updatedAt: new Date().toISOString(),
+    };
+
+    orders[idx] = updatedOrder;
+    localStorage.setItem(STORAGE_KEYS.SERVICE_ORDERS, JSON.stringify(orders));
+    notifyListeners();
+    return updatedOrder;
+  },
+
+  completeServiceOrder(
+    id: string,
+    completionData: {
+      diagnosis?: string;
+      servicesRendered?: string;
+      mechanicName?: string;
+      laborCost?: number;
+      externalCost?: number;
+      downtimeHours?: number;
+      partsUsed?: ServiceOrderPartItem[];
+      deductPartsFromStock?: boolean;
+    }
+  ): ServiceOrder {
+    const order = this.getServiceOrderById(id);
+    if (!order) throw new Error(`OS ${id} não encontrada.`);
+
+    const now = new Date().toISOString();
+    const parts = completionData.partsUsed || order.partsUsed || [];
+
+    // Deduct parts from inventory stock if requested
+    if (completionData.deductPartsFromStock !== false && parts.length > 0) {
+      parts.forEach((part) => {
+        const material = this.getMaterialById(part.materialId) || this.getMaterialByCode(part.code);
+        if (material && part.quantity > 0) {
+          const prevStock = material.currentStock;
+          const newStock = Math.max(0, prevStock - part.quantity);
+          this.updateMaterial(material.id, { currentStock: newStock });
+
+          this.addMovement({
+            materialId: material.id,
+            materialCode: material.code,
+            materialName: material.name,
+            type: 'SAIDA_CONSUMO',
+            quantity: part.quantity,
+            previousStock: prevStock,
+            newStock,
+            date: now,
+            userId: 'usr-mec',
+            userName: completionData.mechanicName || order.mechanicName || 'Oficina Mecânica',
+            userRole: 'almoxarife',
+            location: material.location || 'Oficina de Mecânica & Frota',
+            sector: 'Mecânica e Frota',
+            observation: `Aplicação de peças na ${order.orderNumber} - Veículo: ${order.fleetNumber} (${order.plate})`,
+          });
+        }
+      });
+    }
+
+    const updatedOrder = this.updateServiceOrder(id, {
+      ...completionData,
+      status: 'concluida',
+      closedAt: now,
+    });
+
+    // Restore vehicle status to 'disponivel'
+    const vehicle = this.getVehicleById(order.vehicleId);
+    if (vehicle && vehicle.status === 'em_manutencao') {
+      this.updateVehicle(vehicle.id, { status: 'disponivel' });
+    }
+
+    this.addAuditLog({
+      action: 'CONCLUIR_ORDEM_SERVICO',
+      entity: 'System',
+      entityId: id,
+      details: `Ordem de Serviço ${order.orderNumber} finalizada com sucesso. Veículo ${order.fleetNumber} liberado para operação. Custo Total: R$ ${updatedOrder.totalCost.toFixed(2)}.`,
+    });
+
+    notifyListeners();
+    return updatedOrder;
+  },
+
+  // ------------------------------------------
+  // HISTÓRICO CONSOLIDADO DO VEÍCULO (TIMELINE)
+  // ------------------------------------------
+
+  getVehicleTimeline(vehicleId: string): VehicleTimelineEvent[] {
+    const vehicle = this.getVehicleById(vehicleId);
+    if (!vehicle) return [];
+
+    const events: VehicleTimelineEvent[] = [];
+
+    // 1. Fueling events
+    const fuelings = this.getFuelings(vehicleId);
+    fuelings.forEach((f) => {
+      events.push({
+        id: 'evt-fuel-' + f.id,
+        vehicleId,
+        fleetNumber: vehicle.fleetNumber,
+        type: 'abastecimento',
+        date: f.dateTime,
+        title: `Abastecimento: ${f.liters}L ${f.fuelType.toUpperCase()}`,
+        description: `Posto: ${f.stationLocation}. Custo: R$ ${f.totalCost.toFixed(2)} (${f.calculatedKmPerLiter ? f.calculatedKmPerLiter + ' km/L' : 'Tanque Parcial'}). Motorista: ${f.driverName || 'Não informado'}`,
+        odometerKm: f.odometerKm,
+        hourmeterHours: f.hourmeterHours,
+        cost: f.totalCost,
+        details: f,
+      });
+    });
+
+    // 2. Service Orders events
+    const serviceOrders = this.getServiceOrders(vehicleId);
+    serviceOrders.forEach((os) => {
+      events.push({
+        id: 'evt-os-' + os.id,
+        vehicleId,
+        fleetNumber: vehicle.fleetNumber,
+        type: 'ordem_servico',
+        date: os.openedAt,
+        title: `Ordem de Serviço ${os.orderNumber} (${os.type.toUpperCase()})`,
+        description: `${os.description} - Status: ${os.status.toUpperCase()} - Mecânico: ${os.mechanicName || 'Oficina'} - Custo: R$ ${os.totalCost.toFixed(2)}`,
+        odometerKm: os.odometerKm,
+        hourmeterHours: os.hourmeterHours,
+        cost: os.totalCost,
+        details: os,
+      });
+    });
+
+    return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+
+  // ------------------------------------------
+  // MÉTRICAS GERAIS DA FROTA
+  // ------------------------------------------
+
+  getFleetMetrics() {
+    const vehicles = this.getVehicles();
+    const fuelings = this.getFuelings();
+    const orders = this.getServiceOrders();
+    const plans = this.getMaintenancePlans();
+
+    const totalVehicles = vehicles.length;
+    const availableCount = vehicles.filter((v) => v.status === 'disponivel').length;
+    const inOperationCount = vehicles.filter((v) => v.status === 'em_operacao').length;
+    const inMaintenanceCount = vehicles.filter((v) => v.status === 'em_manutencao').length;
+    const stoppedCount = vehicles.filter((v) => v.status === 'parado' || v.status === 'baixado').length;
+
+    // Fuel metrics this month
+    const now = new Date();
+    const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthlyFuelings = fuelings.filter((f) => f.dateTime.startsWith(currentMonthPrefix));
+
+    const monthlyFuelCost = monthlyFuelings.reduce((sum, f) => sum + f.totalCost, 0);
+    const monthlyFuelLiters = monthlyFuelings.reduce((sum, f) => sum + f.liters, 0);
+
+    const fullTankFuelingsWithKmL = fuelings.filter((f) => f.calculatedKmPerLiter && f.calculatedKmPerLiter > 0);
+    const avgFleetKmL =
+      fullTankFuelingsWithKmL.length > 0
+        ? Number(
+            (
+              fullTankFuelingsWithKmL.reduce((sum, f) => sum + (f.calculatedKmPerLiter || 0), 0) /
+              fullTankFuelingsWithKmL.length
+            ).toFixed(2)
+          )
+        : 2.65;
+
+    const openOrdersCount = orders.filter((o) => o.status !== 'concluida' && o.status !== 'cancelada').length;
+    const overduePlansCount = plans.filter((p) => p.status === 'vencida').length;
+    const upcomingPlansCount = plans.filter((p) => p.status === 'proxima').length;
+
+    const totalMaintenanceCost = orders.reduce((sum, o) => sum + o.totalCost, 0);
+
+    return {
+      totalVehicles,
+      availableCount,
+      inOperationCount,
+      inMaintenanceCount,
+      stoppedCount,
+      fleetAvailabilityRate: totalVehicles > 0 ? Number((((availableCount + inOperationCount) / totalVehicles) * 100).toFixed(1)) : 100,
+      monthlyFuelCost,
+      monthlyFuelLiters,
+      avgFleetKmL,
+      openOrdersCount,
+      overduePlansCount,
+      upcomingPlansCount,
+      totalMaintenanceCost,
+    };
   },
 };

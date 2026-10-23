@@ -18,7 +18,8 @@ export type MaterialCategory =
   | 'Químicos & Limpeza'
   | 'Sinalização'
   | 'Consumíveis'
-  | 'Manutenção';
+  | 'Manutenção'
+  | 'Peças & Mecânica';
 
 export type UnitOfMeasure = 'UN' | 'PAR' | 'CX' | 'KG' | 'LT' | 'PCT' | 'M';
 
@@ -298,5 +299,167 @@ export interface ExcelImportAnalysis {
   totalIgnoredRecords: number;
   totalErrors: number;
   detectedOfficialIkkiSheet: boolean;
+}
+
+// ==========================================
+// MÓDULO MECÂNICA E GESTÃO DE FROTA
+// ==========================================
+
+export type VehicleType =
+  | 'compactador'
+  | 'basculante'
+  | 'pipa'
+  | 'carroceria'
+  | 'apoio'
+  | 'maquina'
+  | 'outro';
+
+export type VehicleFuelType =
+  | 'diesel_s10'
+  | 'diesel_s500'
+  | 'gasolina'
+  | 'etanol'
+  | 'arla32'
+  | 'eletrico'
+  | 'hibrido';
+
+export type VehicleStatus =
+  | 'disponivel'
+  | 'em_operacao'
+  | 'em_manutencao'
+  | 'parado'
+  | 'baixado';
+
+export interface Vehicle {
+  id: string;
+  fleetNumber: string; // e.g. "COMP-01", "BASC-02", "PIPA-01", "APOIO-04"
+  plate: string; // e.g. "BRA2E19"
+  type: VehicleType;
+  brand: string; // e.g. "Mercedes-Benz", "Volkswagen"
+  model: string; // e.g. "Atego 1729 Compactor"
+  year: number;
+  fuelType: VehicleFuelType;
+  tankCapacityLiters: number;
+  currentOdometerKm: number; // Odômetro atual do caminhão em km
+  currentHourmeterHours: number; // Horímetro atual do motor em horas (para compactadores e bombas)
+  acquisitionDate?: string;
+  subRegion: string; // e.g. "Ipiranga", "Paulista", "Taquá", "Penha"
+  status: VehicleStatus;
+  notes?: string;
+  chassisNumber?: string;
+  renavam?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FuelingRecord {
+  id: string;
+  vehicleId: string;
+  fleetNumber: string;
+  plate: string;
+  dateTime: string;
+  driverName?: string; // Nome do motorista apenas para registro do abastecimento (sem cadastro de funcionário)
+  fuelType: VehicleFuelType;
+  liters: number; // Volume abastecido em litros
+  unitPrice: number; // Valor R$/Litro
+  totalCost: number; // R$ total calculado
+  odometerKm: number; // Leitura do odômetro do caminhão
+  hourmeterHours: number; // Leitura do horímetro do caminhão
+  pumpMeterVolume: number; // Leitura do medidor/contador volumétrico da bomba
+  pumpId?: string; // Identificação da bomba (ex: "Bomba 01 - Diesel S10")
+  stationLocation: string; // Posto Interno CPLU ou Posto Conveniado
+  documentNumber?: string; // Número do comprovante ou nota fiscal
+  fullTank: boolean; // Tanque cheio para cálculo preciso de km/l
+  kmDistanceSinceLast?: number;
+  calculatedKmPerLiter?: number; // km/L calculado se abastecido tanque cheio
+  costPerKm?: number; // R$/km
+  notes?: string;
+  anomalyAlert?: string; // Alerta de divergência ou consumo excessivo
+  createdByUserName: string;
+  createdAt: string;
+}
+
+export type MaintenanceIntervalType = 'km' | 'horas' | 'dias' | 'misto';
+
+export interface MaintenancePlan {
+  id: string;
+  vehicleId: string;
+  fleetNumber: string;
+  serviceCategory: string; // ex: "Troca de Óleo de Motor & Filtros", "Freios", "Engraxamento de Chassi/Caçamba"
+  description: string;
+  intervalKm?: number; // ex: a cada 10.000 km
+  intervalHours?: number; // ex: a cada 250 horas
+  intervalDays?: number; // ex: a cada 90 dias
+  lastExecutedDate?: string;
+  lastExecutedKm?: number;
+  lastExecutedHours?: number;
+  nextDueKm?: number;
+  nextDueHours?: number;
+  nextDueDate?: string;
+  status: 'em_dia' | 'proxima' | 'vencida';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ServiceOrderType = 'preventiva' | 'corretiva' | 'inspecao' | 'emergencia';
+export type ServiceOrderPriority = 'baixa' | 'normal' | 'alta' | 'critica';
+export type ServiceOrderStatus =
+  | 'aberta'
+  | 'em_diagnostico'
+  | 'aguardando_pecas'
+  | 'em_execucao'
+  | 'concluida'
+  | 'cancelada';
+
+export interface ServiceOrderPartItem {
+  materialId: string;
+  code: string; // Código IKKI ou código da peça
+  name: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface ServiceOrder {
+  id: string;
+  orderNumber: string; // ex: "OS-2026-0001"
+  vehicleId: string;
+  fleetNumber: string;
+  plate: string;
+  openedAt: string;
+  closedAt?: string;
+  type: ServiceOrderType;
+  priority: ServiceOrderPriority;
+  status: ServiceOrderStatus;
+  description: string; // Sintomas informados ou motivo da abertura
+  diagnosis?: string; // Diagnóstico do mecânico
+  servicesRendered?: string; // Descrição dos serviços mecânicos executados
+  odometerKm: number;
+  hourmeterHours: number;
+  partsUsed: ServiceOrderPartItem[];
+  laborCost: number; // Custo de mão de obra (própria ou externa)
+  externalCost: number; // Serviços terceirizados (ex: retífica, alinhamento externo)
+  totalCost: number; // partsCost + laborCost + externalCost
+  downtimeHours?: number; // Tempo de indisponibilidade do caminhão parado (horas)
+  mechanicName?: string; // Nome do mecânico responsável
+  workshop: string; // ex: "Oficina Interna CPLU" ou "Concessionária / Terceirizada"
+  createdByUserName: string;
+  cancellationReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VehicleTimelineEvent {
+  id: string;
+  vehicleId: string;
+  fleetNumber: string;
+  type: 'abastecimento' | 'ordem_servico' | 'preventiva' | 'status_alterado';
+  date: string;
+  title: string;
+  description: string;
+  odometerKm?: number;
+  hourmeterHours?: number;
+  cost?: number;
+  details?: Record<string, any>;
 }
 

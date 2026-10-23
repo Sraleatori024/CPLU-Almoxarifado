@@ -9,15 +9,12 @@ import { DecodedQRTarget } from './utils/qr';
 import { dbService } from './services/db';
 import { testFirestoreConnection } from './services/firebase';
 
-// Pages
 import { DashboardPage } from './pages/DashboardPage';
 import { MaterialsPage } from './pages/MaterialsPage';
 import { MovementsPage } from './pages/MovementsPage';
 import { QRCodesPage } from './pages/QRCodesPage';
-import { EmployeesPage } from './pages/EmployeesPage';
 import { RequisitionsPage } from './pages/RequisitionsPage';
 import { FulfillRequisitionPage } from './pages/FulfillRequisitionPage';
-import { EPIHistoryPage } from './pages/EPIHistoryPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditPage } from './pages/AuditPage';
 import { UsersPage } from './pages/UsersPage';
@@ -26,6 +23,12 @@ import { TechnicianDashboardPage } from './pages/TechnicianDashboardPage';
 import { AlmoxarifadoDashboardPage } from './pages/AlmoxarifadoDashboardPage';
 import { RegionalComparisonPage } from './pages/RegionalComparisonPage';
 import { ExcelSyncPage } from './pages/ExcelSyncPage';
+import { FleetVehiclesPage } from './pages/FleetVehiclesPage';
+import { FuelingPage } from './pages/FuelingPage';
+import { PreventiveMaintenancePage } from './pages/PreventiveMaintenancePage';
+import { ServiceOrdersPage } from './pages/ServiceOrdersPage';
+import { VehicleHistoryPage } from './pages/VehicleHistoryPage';
+import { AdminIntegrationsPage } from './pages/AdminIntegrationsPage';
 
 function AppContent() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
@@ -122,6 +125,7 @@ function AppContent() {
 
         {/* Content Viewport */}
         <main className="flex-1 min-w-0 px-2.5 py-3.5 sm:px-4 sm:py-5 md:p-6 lg:p-8 max-w-full overflow-x-hidden">
+          {/* 1. Visão Geral */}
           {currentTab === 'dashboard' && (
             <DashboardPage
               onNavigate={handleNavigate}
@@ -129,12 +133,7 @@ function AppContent() {
             />
           )}
 
-          {currentTab === 'tecnico_panel' && (
-            <TechnicianDashboardPage
-              onNavigateToAlmoxarifado={() => handleNavigate('almoxarifado_panel')}
-            />
-          )}
-
+          {/* 2. Almoxarifado */}
           {currentTab === 'almoxarifado_panel' && (
             <AlmoxarifadoDashboardPage
               onNavigateToTechnician={() => handleNavigate('tecnico_panel')}
@@ -142,35 +141,7 @@ function AppContent() {
             />
           )}
 
-          {currentTab === 'regional_comparison' && (
-            <RegionalComparisonPage />
-          )}
-
-          {currentTab === 'excel_sync' && (
-            <ExcelSyncPage />
-          )}
-
-          {currentTab === 'materials' && (
-            <MaterialsPage initialSearchCode={targetCode} />
-          )}
-
-          {currentTab === 'movements' && <MovementsPage />}
-
-          {currentTab === 'qrcodes' && (
-            <QRCodesPage
-              onOpenQRScanner={() => setIsQRScannerOpen(true)}
-              onNavigate={handleNavigate}
-              targetInitialCode={targetCode}
-            />
-          )}
-
-          {currentTab === 'employees' && (
-            <EmployeesPage
-              onNavigate={handleNavigate}
-              targetInitialMatricula={targetCode}
-            />
-          )}
-
+          {/* 3. Requisições */}
           {currentTab === 'requisitions' && (
             <RequisitionsPage
               onNavigate={handleNavigate}
@@ -178,20 +149,87 @@ function AppContent() {
             />
           )}
 
+          {/* 4. Estoque e Consolidado */}
+          {currentTab === 'materials' && (
+            <MaterialsPage initialSearchCode={targetCode} />
+          )}
+
+          {/* 5. Postos e Sub-regiões */}
+          {currentTab === 'regional_comparison' && (
+            <RegionalComparisonPage />
+          )}
+
+          {/* 6. Mecânica e Frota */}
+          {currentTab === 'fleet' && (
+            <FleetVehiclesPage
+              onNavigateToFuel={(id) => {
+                setTargetCode(id);
+                setCurrentTab('fuel');
+              }}
+              onNavigateToOS={(id) => {
+                setTargetCode(id);
+                setCurrentTab('service_orders');
+              }}
+              onNavigateToHistory={(id) => {
+                setTargetCode(id);
+                setCurrentTab('vehicle_history');
+              }}
+            />
+          )}
+
+          {/* 7. Abastecimento */}
+          {currentTab === 'fuel' && (
+            <FuelingPage initialVehicleId={targetCode} />
+          )}
+
+          {/* 8. Manutenção Preventiva */}
+          {currentTab === 'preventive' && (
+            <PreventiveMaintenancePage
+              onNavigateToOS={(id) => {
+                setTargetCode(id);
+                setCurrentTab('service_orders');
+              }}
+            />
+          )}
+
+          {/* 9. Ordens de Serviço */}
+          {currentTab === 'service_orders' && (
+            <ServiceOrdersPage initialVehicleId={targetCode} />
+          )}
+
+          {/* 10. Histórico de Veículos */}
+          {currentTab === 'vehicle_history' && (
+            <VehicleHistoryPage initialVehicleId={targetCode} />
+          )}
+
+          {/* 11. Relatórios Gerenciais */}
+          {currentTab === 'reports' && <ReportsPage />}
+
+          {/* 12. Administração & Integrações */}
+          {currentTab === 'admin_integrations' && (
+            <AdminIntegrationsPage />
+          )}
+
+          {/* Sub-rotas e Atalhos */}
+          {currentTab === 'tecnico_panel' && (
+            <TechnicianDashboardPage
+              onNavigateToAlmoxarifado={() => handleNavigate('almoxarifado_panel')}
+            />
+          )}
+          {currentTab === 'movements' && <MovementsPage />}
+          {currentTab === 'qrcodes' && (
+            <QRCodesPage
+              onOpenQRScanner={() => setIsQRScannerOpen(true)}
+              onNavigate={handleNavigate}
+              targetInitialCode={targetCode}
+            />
+          )}
           {currentTab === 'fulfillment' && (
             <FulfillRequisitionPage initialSearchReqNumber={targetCode} />
           )}
-
-          {currentTab === 'epi_history' && (
-            <EPIHistoryPage initialSearchMatricula={targetCode} />
-          )}
-
-          {currentTab === 'reports' && <ReportsPage />}
-
+          {currentTab === 'excel_sync' && <ExcelSyncPage />}
           {currentTab === 'audit' && <AuditPage />}
-
           {currentTab === 'users' && <UsersPage />}
-
           {currentTab === 'settings' && <SettingsPage />}
         </main>
       </div>

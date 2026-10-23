@@ -77,9 +77,9 @@ export const EPIHistoryPage: React.FC<EPIHistoryPageProps> = ({
           del.id,
           del.requisitionNumber,
           formatDateTimeBR(del.date),
-          del.employeeName,
-          del.employeeMatricula,
-          del.sector,
+          del.employeeName || del.regionName || 'Geral',
+          del.employeeMatricula || 'N/A',
+          del.sector || del.regionName || 'Almoxarifado',
           del.deliveredByName,
           item.materialCode,
           item.materialName,
@@ -100,8 +100,10 @@ export const EPIHistoryPage: React.FC<EPIHistoryPageProps> = ({
     const matchesSearch =
       !q ||
       del.requisitionNumber.toLowerCase().includes(q) ||
-      del.employeeName.toLowerCase().includes(q) ||
-      del.employeeMatricula.toLowerCase().includes(q) ||
+      (del.stampedNumber && del.stampedNumber.toLowerCase().includes(q)) ||
+      (del.regionName && del.regionName.toLowerCase().includes(q)) ||
+      (del.employeeName && del.employeeName.toLowerCase().includes(q)) ||
+      (del.employeeMatricula && del.employeeMatricula.toLowerCase().includes(q)) ||
       del.items.some((i) => i.materialName.toLowerCase().includes(q) || i.materialCode.toLowerCase().includes(q));
 
     const matchesEmployee =

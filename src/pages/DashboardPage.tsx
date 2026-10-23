@@ -16,6 +16,10 @@ import {
   Sparkles,
   MapPin,
   FileSpreadsheet,
+  Truck,
+  Fuel,
+  Wrench,
+  CalendarClock,
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { Material, Movement, Requisition } from '../types';
@@ -29,6 +33,7 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpenQRScanner }) => {
   const [metrics, setMetrics] = useState(dbService.getSystemMetrics());
+  const [fleetMetrics, setFleetMetrics] = useState(dbService.getFleetMetrics());
   const [movements, setMovements] = useState<Movement[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [requisitions, setRequisitions] = useState<Requisition[]>([]);
@@ -39,6 +44,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpen
 
   const loadData = () => {
     setMetrics(dbService.getSystemMetrics());
+    setFleetMetrics(dbService.getFleetMetrics());
     setMovements(dbService.getMovements().slice(0, 8));
     setMaterials(dbService.getMaterials());
     setRequisitions(dbService.getRequisitions());
@@ -238,6 +244,113 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpen
           <div className="mt-3 pt-2.5 border-t border-teal-700/50 flex items-center justify-between text-[11px] text-emerald-200">
             <span>OneDrive / Drive / Local</span>
             <span className="font-semibold text-white group-hover:underline">Integrar &rarr;</span>
+          </div>
+        </div>
+      </div>
+
+      {/* MÓDULO MECÂNICA & GESTÃO DE FROTA — VISÃO INTEGRADA */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-orange-600 text-white rounded-xl shadow-xs">
+              <Truck className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-900 tracking-tight">
+                Painel Integrado: Mecânica & Gestão de Frota
+              </h2>
+              <p className="text-xs text-slate-500">
+                Disponibilidade de caminhões coletores, controle de abastecimento e manutenção programada
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate('fleet')}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <Truck className="w-3.5 h-3.5 text-orange-600" />
+              Ver Frota Completa
+            </button>
+            <button
+              onClick={() => onNavigate('fuel')}
+              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+            >
+              <Fuel className="w-3.5 h-3.5" />
+              Abastecer Veículo
+            </button>
+          </div>
+        </div>
+
+        {/* Fleet KPI Mini-Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div
+            onClick={() => onNavigate('fleet')}
+            className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-slate-500 uppercase block">Total da Frota</span>
+            <div className="text-xl font-mono font-black text-slate-900 mt-0.5">
+              {fleetMetrics.totalVehicles} veículos
+            </div>
+            <span className="text-[10px] text-emerald-600 font-semibold">
+              {fleetMetrics.fleetAvailabilityRate}% disponíveis
+            </span>
+          </div>
+
+          <div
+            onClick={() => onNavigate('fleet')}
+            className="p-3.5 bg-emerald-50/60 hover:bg-emerald-50 rounded-xl border border-emerald-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-emerald-800 uppercase block">Em Operação</span>
+            <div className="text-xl font-mono font-black text-emerald-900 mt-0.5">
+              {fleetMetrics.inOperationCount + fleetMetrics.availableCount} caminhões
+            </div>
+            <span className="text-[10px] text-emerald-700">coleta ativa</span>
+          </div>
+
+          <div
+            onClick={() => onNavigate('service_orders')}
+            className="p-3.5 bg-amber-50/60 hover:bg-amber-50 rounded-xl border border-amber-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-amber-800 uppercase block">Em Manutenção</span>
+            <div className="text-xl font-mono font-black text-amber-900 mt-0.5">
+              {fleetMetrics.inMaintenanceCount}
+            </div>
+            <span className="text-[10px] text-amber-700">na oficina interna</span>
+          </div>
+
+          <div
+            onClick={() => onNavigate('fuel')}
+            className="p-3.5 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-slate-500 uppercase block">Consumo Médio</span>
+            <div className="text-xl font-mono font-black text-slate-900 mt-0.5">
+              {fleetMetrics.avgFleetKmL} km/L
+            </div>
+            <span className="text-[10px] text-slate-500">média da frota</span>
+          </div>
+
+          <div
+            onClick={() => onNavigate('preventive')}
+            className="p-3.5 bg-rose-50/60 hover:bg-rose-50 rounded-xl border border-rose-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-rose-800 uppercase block">Preventivas Vencidas</span>
+            <div className="text-xl font-mono font-black text-rose-900 mt-0.5">
+              {fleetMetrics.overduePlansCount}
+            </div>
+            <span className="text-[10px] text-rose-700">requer agendamento</span>
+          </div>
+
+          <div
+            onClick={() => onNavigate('service_orders')}
+            className="p-3.5 bg-blue-50/60 hover:bg-blue-50 rounded-xl border border-blue-200 cursor-pointer transition"
+          >
+            <span className="text-[10px] font-bold text-blue-800 uppercase block">OS Abertas</span>
+            <div className="text-xl font-mono font-black text-blue-900 mt-0.5">
+              {fleetMetrics.openOrdersCount} ordens
+            </div>
+            <span className="text-[10px] text-blue-700">em execução</span>
           </div>
         </div>
       </div>
@@ -544,7 +657,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpen
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
                           <span>Resp: {mov.userName}</span>
-                          {mov.employeeName && <span>• Destinatário: {mov.employeeName}</span>}
+                          {mov.regionName && <span>• Região: {mov.regionName}</span>}
+                          {mov.stampedNumber && <span>• Carimbo: {mov.stampedNumber}</span>}
                           <span>• {formatDateTimeBR(mov.date)}</span>
                         </div>
                       </div>

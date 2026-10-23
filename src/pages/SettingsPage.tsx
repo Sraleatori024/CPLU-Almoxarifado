@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings,
   Database,
@@ -13,14 +13,105 @@ import {
   FileCode,
   ExternalLink,
   Lock,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  Activity,
+  RefreshCw,
 } from 'lucide-react';
 import { dbService } from '../services/db';
 import { useAuth } from '../contexts/AuthContext';
+import { firebaseConfig, testFirestoreConnection } from '../services/firebase';
+import { firebaseSyncService, FirebaseSyncStatus } from '../services/firebaseSync';
 
 export const SettingsPage: React.FC = () => {
-  const { role, canConfigureSystem } = useAuth();
+  const { currentUser, role, canConfigureSystem } = useAuth();
   const [isDemo, setIsDemo] = useState(dbService.isDemoData());
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Firebase Live Sync States
+  const [syncStatus, setSyncStatus] = useState<FirebaseSyncStatus>(firebaseSyncService.getSyncStatus());
+  const [isTestingConn, setIsTestingConn] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [connResult, setConnResult] = useState<{ status: 'idle' | 'success' | 'error'; message: string }>({
+    status: 'idle',
+    message: '',
+  });
+
+  const handleTestConnection = async () => {
+    setIsTestingConn(true);
+    setConnResult({ status: 'idle', message: '' });
+    try {
+      const ok = await testFirestoreConnection();
+      if (ok) {
+        setConnResult({
+          status: 'success',
+          message: 'Conexão ativa com Google Cloud Firestore (Projeto: cplu-almxarifado).',
+        });
+      } else {
+        setConnResult({
+          status: 'error',
+          message: 'Cliente Firestore offline ou sem resposta do cluster.',
+        });
+      }
+    } catch (e: any) {
+      setConnResult({
+        status: 'error',
+        message: 'Falha ao testar conexão: ' + (e?.message || String(e)),
+      });
+    } finally {
+      setIsTestingConn(false);
+    }
+  };
+
+  const handlePushToFirestore = async () => {
+    if (!currentUser) return;
+    setIsPushing(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await firebaseSyncService.pushAllToFirestore(currentUser);
+      if (res.success) {
+        setSuccessMsg(res.message);
+        setSyncStatus(firebaseSyncService.getSyncStatus());
+      } else {
+        setErrorMsg(res.message);
+      }
+    } catch (e: any) {
+      setErrorMsg('Erro na sincronização: ' + (e?.message || String(e)));
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  const handlePullFromFirestore = async () => {
+    if (!currentUser) return;
+    if (
+      !confirm(
+        'Deseja baixar os dados do Cloud Firestore e sincronizar com o almoxarifado local? Os registros serão conciliados.'
+      )
+    ) {
+      return;
+    }
+    setIsPulling(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    try {
+      const res = await firebaseSyncService.pullAllFromFirestore(currentUser);
+      if (res.success) {
+        setSuccessMsg(res.message);
+        setSyncStatus(firebaseSyncService.getSyncStatus());
+      } else {
+        setErrorMsg(res.message);
+      }
+    } catch (e: any) {
+      setErrorMsg('Erro ao baixar: ' + (e?.message || String(e)));
+    } finally {
+      setIsPulling(false);
+    }
+  };
 
   const handleExportBackup = () => {
     const backupData = {
@@ -75,7 +166,7 @@ export const SettingsPage: React.FC = () => {
           Configurações do Sistema & Arquitetura Cloud
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Persistência de dados, rotinas de backup, conformidade de segurança e integração com Cloud Firestore
+          Persistência de dados, sincronização com Cloud Firestore (Projeto: {firebaseConfig.projectId}) e rotinas de segurança
         </p>
       </div>
 
@@ -90,6 +181,135 @@ export const SettingsPage: React.FC = () => {
           </button>
         </div>
       )}
+
+      {errorMsg && (
+        <div className="p-4 bg-rose-50 border border-rose-300 text-rose-800 rounded-2xl text-xs flex items-center justify-between font-semibold animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-rose-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button onClick={() => setErrorMsg(null)} className="text-xs underline font-bold">
+            Dispensar
+          </button>
+        </div>
+      )}
+
+      {/* CLOUD FIRESTORE STATUS & SYNC CARD (Official User Firebase Project) */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-orange-950 text-white rounded-3xl p-6 border border-orange-500/30 shadow-lg space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-orange-600/30 text-orange-400 rounded-2xl border border-orange-500/40 shadow-inner">
+              <Cloud className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-black tracking-tight text-white">Google Cloud Firestore</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  Firebase Web SDK v12 Ativo
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5 font-mono">
+                Projeto: <strong className="text-orange-400">{firebaseConfig.projectId}</strong> • Auth: {firebaseConfig.authDomain}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleTestConnection}
+            disabled={isTestingConn}
+            className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold transition flex items-center gap-2 text-slate-200"
+          >
+            {isTestingConn ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-orange-400" />
+            ) : (
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+            )}
+            Testar Conexão
+          </button>
+        </div>
+
+        {connResult.status !== 'idle' && (
+          <div
+            className={`p-3 rounded-xl text-xs flex items-center gap-2 ${
+              connResult.status === 'success'
+                ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+            }`}
+          >
+            {connResult.status === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            )}
+            <span>{connResult.message}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-slate-400 text-[11px] block mb-1">Project ID:</span>
+            <span className="font-mono font-bold text-orange-300 text-sm">{firebaseConfig.projectId}</span>
+            <span className="text-[10px] text-slate-400 block mt-1">Região: us-central / São Paulo</span>
+          </div>
+
+          <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-slate-400 text-[11px] block mb-1">Storage Bucket:</span>
+            <span className="font-mono font-semibold text-slate-200 text-xs truncate block">{firebaseConfig.storageBucket}</span>
+            <span className="text-[10px] text-slate-400 block mt-1">Armazenamento de recibos e assinaturas</span>
+          </div>
+
+          <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-slate-400 text-[11px] block mb-1">Última Sincronização:</span>
+            <span className="font-bold text-emerald-300 text-xs">
+              {syncStatus.lastSyncTime ? new Date(syncStatus.lastSyncTime).toLocaleString('pt-BR') : 'Ainda não executada'}
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-1">
+              {syncStatus.syncedMaterialsCount} materiais no log
+            </span>
+          </div>
+
+          <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10">
+            <span className="text-slate-400 text-[11px] block mb-1">Regras de Segurança:</span>
+            <span className="font-bold text-emerald-300 text-xs flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> firestore.rules
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-1">ABAC com Zero-Trust e RBAC ativo</span>
+          </div>
+        </div>
+
+        {/* Sync Controls */}
+        <div className="pt-2 flex flex-wrap items-center gap-3">
+          <button
+            onClick={handlePushToFirestore}
+            disabled={isPushing || isPulling}
+            className="px-4 py-2.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center gap-2 shadow-md shadow-orange-600/20"
+          >
+            {isPushing ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <CloudUpload className="w-4 h-4" />
+            )}
+            Enviar Dados para Cloud Firestore (Upload)
+          </button>
+
+          <button
+            onClick={handlePullFromFirestore}
+            disabled={isPushing || isPulling}
+            className="px-4 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition flex items-center gap-2 border border-white/20"
+          >
+            {isPulling ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+            ) : (
+              <CloudDownload className="w-4 h-4 text-orange-400" />
+            )}
+            Baixar Dados do Cloud Firestore (Download)
+          </button>
+
+          <span className="text-[11px] text-slate-400 ml-auto hidden md:inline">
+            Sincronização bidirecional idempotente para produção contínua.
+          </span>
+        </div>
+      </div>
 
       {/* Database State Card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
@@ -202,7 +422,7 @@ export const SettingsPage: React.FC = () => {
                 1. Conexão do Firebase Firestore
               </span>
               <p className="text-[11px] text-slate-400">
-                Quando o usuário provisiona o projeto Firebase pelo botão oficial, o arquivo <code>firebase-applet-config.json</code> é injetado automaticamente e as regras de <code>firestore.rules</code> são publicadas via RPC segura.
+                O arquivo <code>firebase-applet-config.json</code> está configurado para o projeto <code>cplu-almxarifado</code> e as regras de <code>firestore.rules</code> protegem as coleções contra acessos indevidos.
               </p>
             </div>
 

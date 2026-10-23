@@ -653,9 +653,38 @@ export const AlmoxarifadoDashboardPage: React.FC<AlmoxarifadoDashboardPageProps>
                           <tr key={item.id} className="hover:bg-slate-50">
                             <td className="py-2.5 px-3">
                               <div className="font-bold text-slate-900">{item.materialName}</div>
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                {item.materialCode} {item.caNumber ? `• CA: ${item.caNumber}` : ''}
-                              </span>
+                              <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-orange-700">{item.materialCode}</span>
+                                {item.caNumber && <span>• CA: {item.caNumber}</span>}
+                              </div>
+
+                              {/* Physical Storage Locations (Corredor, Prateleira, Nível, Qtd) */}
+                              <div className="mt-1.5 p-2 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px]">
+                                <span className="font-bold text-amber-950 flex items-center gap-1 text-[10px] uppercase tracking-wider mb-1">
+                                  📍 Localização para Separação:
+                                </span>
+                                {mat?.physicalLocations && mat.physicalLocations.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {mat.physicalLocations.map((loc, lIdx) => (
+                                      <div
+                                        key={loc.id || lIdx}
+                                        className="flex items-center justify-between gap-2 bg-white px-2 py-0.5 rounded border border-amber-200/60"
+                                      >
+                                        <span className="font-semibold text-slate-800">
+                                          {loc.aisle} • {loc.shelf} • {loc.level}
+                                        </span>
+                                        <span className="font-mono font-bold text-orange-700 text-[10px]">
+                                          Disponível: {loc.quantity} {item.unit}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-600 font-medium">
+                                    {mat?.shelf || 'Almoxarifado Central'}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-2.5 px-3 text-center font-mono">
                               {item.quantityRequested} {item.unit}

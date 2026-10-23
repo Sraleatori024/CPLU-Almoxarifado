@@ -53,10 +53,12 @@ export function parseQRCodeText(text: string): DecodedQRTarget {
     upper.startsWith('CON-') ||
     upper.startsWith('SIN-') ||
     upper.startsWith('QUI-') ||
-    upper.startsWith('MAT-')
+    upper.startsWith('MAT-') ||
+    /^\d{4,10}$/.test(trimmed) ||
+    /^[A-Z0-9_-]{3,20}$/.test(upper)
   ) {
-    return { type: 'material', code: upper, raw: trimmed };
+    return { type: 'material', code: trimmed, raw: trimmed };
   }
 
-  return { type: 'unknown', code: upper, raw: trimmed };
+  return { type: 'unknown', code: trimmed, raw: trimmed };
 }

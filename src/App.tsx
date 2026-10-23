@@ -7,6 +7,7 @@ import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { DecodedQRTarget } from './utils/qr';
 import { dbService } from './services/db';
+import { testFirestoreConnection } from './services/firebase';
 
 // Pages
 import { DashboardPage } from './pages/DashboardPage';
@@ -55,6 +56,7 @@ function AppContent() {
   useEffect(() => {
     dbService.init();
     refreshBadges();
+    testFirestoreConnection();
     const unsub = dbService.subscribe(refreshBadges);
     return () => unsub();
   }, []);

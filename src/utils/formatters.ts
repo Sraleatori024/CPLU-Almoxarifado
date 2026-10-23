@@ -55,6 +55,8 @@ export function getMovementTypeLabel(type: string): { label: string; isEntry: bo
       return { label: 'Saída por Transferência', isEntry: false, color: 'text-indigo-700 bg-indigo-50 border-indigo-200' };
     case 'SAIDA_AJUSTE':
       return { label: 'Saída por Ajuste / Avaria', isEntry: false, color: 'text-rose-700 bg-rose-50 border-rose-200' };
+    case 'TRANSFERENCIA_LOCAL':
+      return { label: 'Reorganização / Transferência Física', isEntry: false, color: 'text-purple-700 bg-purple-50 border-purple-200' };
     default:
       return { label: type, isEntry: false, color: 'text-slate-700 bg-slate-50 border-slate-200' };
   }

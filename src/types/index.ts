@@ -22,9 +22,19 @@ export type MaterialCategory =
 
 export type UnitOfMeasure = 'UN' | 'PAR' | 'CX' | 'KG' | 'LT' | 'PCT' | 'M';
 
+export interface MaterialPhysicalLocation {
+  id: string;
+  aisle: string; // Corredor (ex: "Corredor 1" ou "1")
+  shelf: string; // Prateleira (ex: "Prateleira 3" ou "3")
+  level: string; // Nível ou andar (ex: "Nível 2" ou "2")
+  quantity: number; // Quantidade armazenada naquele local
+  updatedAt?: string;
+}
+
 export interface Material {
   id: string;
-  code: string; // Unique alphanumeric code
+  code: string; // Código oficial IKKI (preservando zeros à esquerda, ex: "001420", "EPI-LUV-01")
+  ikkiCode?: string; // Código IKKI oficial explícito
   name: string;
   description: string;
   category: MaterialCategory;
@@ -32,7 +42,8 @@ export interface Material {
   currentStock: number;
   minStock: number;
   location: string; // e.g. "Galpão A - Almoxarifado Central"
-  shelf: string; // e.g. "PRAT-A1-03"
+  shelf: string; // e.g. "PRAT-EPI-01" ou resumo da localização principal
+  physicalLocations?: MaterialPhysicalLocation[]; // Controle de múltiplos locais físicos com quantidade por local
   status: 'ativo' | 'inativo';
   supplier?: string;
   isEpi: boolean;
@@ -50,7 +61,8 @@ export type MovementType =
   | 'SAIDA_REQUISICAO'
   | 'SAIDA_CONSUMO'
   | 'SAIDA_TRANSFERENCIA'
-  | 'SAIDA_AJUSTE';
+  | 'SAIDA_AJUSTE'
+  | 'TRANSFERENCIA_LOCAL'; // Reorganização física entre corredores/prateleiras sem alterar saldo total
 
 export interface Movement {
   id: string;
@@ -74,17 +86,23 @@ export interface Movement {
   regionName?: string;
   requisitionId?: string;
   requisitionNumber?: string;
+  stampedNumber?: string; // Número oficial carimbado no almoxarifado (ex: "19-47")
   idempotencyKey?: string;
   observation?: string;
   justification?: string;
+  invoiceNumber?: string; // Nota Fiscal (quando aplicável)
+  supplier?: string; // Fornecedor / Empresa
+  receivedDate?: string; // Data de recebimento informada
+  sourceLocation?: string; // Localização de origem na transferência física
+  targetLocation?: string; // Localização de destino na transferência física
 }
 
 export type EmployeeStatus = 'ativo' | 'afastado' | 'ferias' | 'desligado';
 
 export interface Region {
   id: string;
-  code: string; // e.g. "REG-PLT", "REG-TQA", "REG-PNH"
-  name: string; // "Paulista", "Taquá", "Penha"
+  code: string; // e.g. "REG-PLT", "REG-TQA", "REG-PNH", "REG-IPR"
+  name: string; // "Paulista", "Taquá", "Penha", "Ipiranga"
   supervisor?: string;
   active: boolean;
   createdAt: string;
@@ -134,19 +152,23 @@ export interface RequisitionItem {
 export interface Requisition {
   id: string;
   number: string; // e.g. "REQ-2026-0042"
-  employeeId: string;
-  employeeName: string;
-  employeeMatricula: string;
-  sector: string;
+  stampedNumber?: string; // Número oficial carimbado no almoxarifado em papel (ex: "19-47")
+  stampedAt?: string; // Data e hora em que o número foi registrado
+  stampedBy?: string; // Nome do almoxarife que registrou o carimbo
+  stampedByUserId?: string;
+  regionName: string; // Região solicitante obrigatória (ex: "Ipiranga")
   regionId?: string;
-  regionName?: string;
+  employeeId?: string; // Opcional - desvinculado do consumo obrigatório
+  employeeName?: string;
+  employeeMatricula?: string;
+  sector?: string;
   status: RequisitionStatus;
   priority: RequisitionPriority;
   justification: string;
   observations?: string;
   rejectionReason?: string;
   requestedByUserId: string;
-  requestedByName: string;
+  requestedByName: string; // Nome do Técnico de Segurança que criou a requisição
   requestedByMatricula?: string;
   sentAt?: string;
   isNewNotification?: boolean;
@@ -160,10 +182,11 @@ export interface EPIDelivery {
   id: string;
   requisitionId: string;
   requisitionNumber: string;
-  employeeId: string;
-  employeeName: string;
-  employeeMatricula: string;
-  sector: string;
+  stampedNumber?: string; // Número oficial carimbado
+  employeeId?: string;
+  employeeName?: string;
+  employeeMatricula?: string;
+  sector?: string;
   regionId?: string;
   regionName?: string;
   deliveredByUserId: string;
@@ -240,17 +263,40 @@ export interface ExcelSyncLog {
   backupDataUrl?: string;
 }
 
+export interface ExcelSheetReport {
+  name: string;
+  rowCount: number;
+  detectedType:
+    | 'LIST_IKKI'
+    | 'CONSUMO'
+    | 'ENTRADAS'
+    | 'SALDO_AGOSTO'
+    | 'CONSOLIDADO'
+    | 'EPI'
+    | 'MATERIAIS'
+    | 'FUNCIONARIOS'
+    | 'REGIOES'
+    | 'MOVIMENTACOES'
+    | 'DESCONHECIDO';
+  headers: string[];
+  validRowsCount: number;
+  ignoredRowsCount: number;
+  errorCount: number;
+  sampleErrors: string[];
+  samplePreview: any[];
+}
+
 export interface ExcelImportAnalysis {
   fileName: string;
   fileSizeBytes: number;
-  sheets: {
-    name: string;
-    rowCount: number;
-    detectedType: 'MATERIAIS' | 'FUNCIONARIOS' | 'REGIOES' | 'MOVIMENTACOES' | 'CONSUMO' | 'DESCONHECIDO';
-    headers: string[];
-  }[];
+  sheets: ExcelSheetReport[];
   materialsFound: number;
   employeesFound: number;
   regionsFound: string[];
   movementsFound: number;
+  totalValidRecords: number;
+  totalIgnoredRecords: number;
+  totalErrors: number;
+  detectedOfficialIkkiSheet: boolean;
 }
+

@@ -1,5 +1,6 @@
 import {
   Material,
+  MaterialPhysicalLocation,
   Movement,
   Employee,
   Requisition,
@@ -70,13 +71,22 @@ export const SEED_REGIONS: Region[] = [
     active: true,
     createdAt: '2026-01-01T08:00:00Z',
   },
+  {
+    id: 'reg-006',
+    code: 'REG-IPR',
+    name: 'Ipiranga',
+    supervisor: 'Eduardo Martins',
+    active: true,
+    createdAt: '2026-01-01T08:00:00Z',
+  },
 ];
 
-// Initial realistic seed dataset for Limpeza Urbana operations
+// Initial realistic seed dataset for Limpeza Urbana operations with official IKKI codes and physical locations
 export const SEED_MATERIALS: Material[] = [
   {
     id: 'mat-001',
-    code: 'EPI-LUV-01',
+    code: '001420',
+    ikkiCode: '001420',
     name: 'Luva de Vaqueta Mista Reforçada',
     description: 'Luva de segurança em vaqueta na palma e raspa no dorso para serviços pesados de coleta e capina.',
     category: 'EPI',
@@ -84,7 +94,25 @@ export const SEED_MATERIALS: Material[] = [
     currentStock: 120,
     minStock: 50,
     location: 'Galpão A - Almoxarifado Central',
-    shelf: 'PRAT-EPI-01',
+    shelf: 'Corredor 1, Prat. 3, Nív. 2',
+    physicalLocations: [
+      {
+        id: 'loc-001-1',
+        aisle: 'Corredor 1',
+        shelf: 'Prateleira 3',
+        level: 'Nível 2',
+        quantity: 80,
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+      {
+        id: 'loc-001-2',
+        aisle: 'Corredor 1',
+        shelf: 'Prateleira 1',
+        level: 'Nível 1',
+        quantity: 40,
+        updatedAt: '2026-03-01T10:00:00Z',
+      },
+    ],
     status: 'ativo',
     supplier: 'Couros & Cia EPIs',
     isEpi: true,
@@ -95,7 +123,8 @@ export const SEED_MATERIALS: Material[] = [
   },
   {
     id: 'mat-002',
-    code: 'EPI-BOT-02',
+    code: '001421',
+    ikkiCode: '001421',
     name: 'Botina de Segurança Nobuck Bico Composite',
     description: 'Calçado de segurança fechado com biqueira composite e solado bi-densidade anti-perfuração.',
     category: 'EPI',
@@ -103,7 +132,17 @@ export const SEED_MATERIALS: Material[] = [
     currentStock: 18, // Below minimum to trigger alert
     minStock: 30,
     location: 'Galpão A - Almoxarifado Central',
-    shelf: 'PRAT-EPI-02',
+    shelf: 'Corredor 2, Prat. 2, Nív. 1',
+    physicalLocations: [
+      {
+        id: 'loc-002-1',
+        aisle: 'Corredor 2',
+        shelf: 'Prateleira 2',
+        level: 'Nível 1',
+        quantity: 18,
+        updatedAt: '2026-03-05T14:30:00Z',
+      },
+    ],
     status: 'ativo',
     supplier: 'Vulcan Calçados de Segurança',
     isEpi: true,
@@ -114,7 +153,8 @@ export const SEED_MATERIALS: Material[] = [
   },
   {
     id: 'mat-003',
-    code: 'EPI-COL-03',
+    code: '002105',
+    ikkiCode: '002105',
     name: 'Colete Refletivo Laranja Alta Visibilidade Classe 2',
     description: 'Colete com faixas refletivas prismáticas homologado para trânsito e varrição noturna.',
     category: 'EPI',
@@ -122,7 +162,17 @@ export const SEED_MATERIALS: Material[] = [
     currentStock: 85,
     minStock: 40,
     location: 'Galpão A - Almoxarifado Central',
-    shelf: 'PRAT-EPI-03',
+    shelf: 'Corredor 1, Prat. 4, Nív. 3',
+    physicalLocations: [
+      {
+        id: 'loc-003-1',
+        aisle: 'Corredor 1',
+        shelf: 'Prateleira 4',
+        level: 'Nível 3',
+        quantity: 85,
+        updatedAt: '2026-02-15T11:00:00Z',
+      },
+    ],
     status: 'ativo',
     supplier: 'SignalTex Confeccoes',
     isEpi: true,
@@ -133,7 +183,8 @@ export const SEED_MATERIALS: Material[] = [
   },
   {
     id: 'mat-004',
-    code: 'EPI-OCU-04',
+    code: '003890',
+    ikkiCode: '003890',
     name: 'Óculos de Proteção Ampla Visão Anti-embaçante',
     description: 'Óculos de policarbonato incolor com ventilação indireta e tratamento UV.',
     category: 'EPI',
@@ -141,7 +192,17 @@ export const SEED_MATERIALS: Material[] = [
     currentStock: 4, // Critical stock!
     minStock: 25,
     location: 'Galpão A - Almoxarifado Central',
-    shelf: 'PRAT-EPI-01',
+    shelf: 'Corredor 3, Prat. 1, Nív. 2',
+    physicalLocations: [
+      {
+        id: 'loc-004-1',
+        aisle: 'Corredor 3',
+        shelf: 'Prateleira 1',
+        level: 'Nível 2',
+        quantity: 4,
+        updatedAt: '2026-03-10T09:15:00Z',
+      },
+    ],
     status: 'ativo',
     supplier: 'SafeEye Óptica Industrial',
     isEpi: true,
@@ -152,7 +213,8 @@ export const SEED_MATERIALS: Material[] = [
   },
   {
     id: 'mat-005',
-    code: 'EPI-PRO-05',
+    code: '004510',
+    ikkiCode: '004510',
     name: 'Protetor Auricular Tipo Concha 24dB',
     description: 'Atenuador de ruído acoplável a capacete para operadores de roçadeira e trituradores.',
     category: 'EPI',
@@ -160,7 +222,17 @@ export const SEED_MATERIALS: Material[] = [
     currentStock: 35,
     minStock: 20,
     location: 'Galpão A - Almoxarifado Central',
-    shelf: 'PRAT-EPI-04',
+    shelf: 'Corredor 3, Prat. 2, Nív. 1',
+    physicalLocations: [
+      {
+        id: 'loc-005-1',
+        aisle: 'Corredor 3',
+        shelf: 'Prateleira 2',
+        level: 'Nível 1',
+        quantity: 35,
+        updatedAt: '2026-02-28T16:00:00Z',
+      },
+    ],
     status: 'ativo',
     supplier: 'Sonics Proteção Auditiva',
     isEpi: true,
@@ -966,7 +1038,22 @@ export const dbService = {
   // MATERIALS
   getMaterials(): Material[] {
     const raw = localStorage.getItem(STORAGE_KEYS.MATERIALS);
-    return raw ? JSON.parse(raw) : [];
+    const materials: Material[] = raw ? JSON.parse(raw) : [];
+    return materials.map((m) => {
+      // Ensure physicalLocations is populated
+      if (!m.physicalLocations || m.physicalLocations.length === 0) {
+        const defaultLoc: MaterialPhysicalLocation = {
+          id: 'loc-' + m.id + '-1',
+          aisle: 'Corredor 1',
+          shelf: m.shelf || 'Prateleira 1',
+          level: 'Nível 1',
+          quantity: m.currentStock || 0,
+          updatedAt: m.updatedAt || new Date().toISOString(),
+        };
+        m.physicalLocations = [defaultLoc];
+      }
+      return m;
+    });
   },
 
   getMaterialById(id: string): Material | undefined {
@@ -974,8 +1061,361 @@ export const dbService = {
   },
 
   getMaterialByCode(code: string): Material | undefined {
+    if (!code) return undefined;
     const clean = code.trim().toUpperCase();
-    return this.getMaterials().find((m) => m.code.toUpperCase() === clean);
+    const cleanNoZeros = clean.replace(/^0+/, '');
+    return this.getMaterials().find(
+      (m) =>
+        m.code.toUpperCase() === clean ||
+        (m.ikkiCode && m.ikkiCode.toUpperCase() === clean) ||
+        m.id.toUpperCase() === clean ||
+        (cleanNoZeros.length > 0 && m.code.toUpperCase().replace(/^0+/, '') === cleanNoZeros) ||
+        (clean === 'EPI-LUV-01' && (m.code === '001420' || m.code === 'EPI-LUV-01')) ||
+        (clean === 'EPI-BOT-02' && (m.code === '001421' || m.code === 'EPI-BOT-02')) ||
+        (clean === 'EPI-COL-03' && (m.code === '002105' || m.code === 'EPI-COL-03')) ||
+        (clean === 'EPI-OCU-04' && (m.code === '003890' || m.code === 'EPI-OCU-04')) ||
+        (clean === 'EPI-PRO-05' && (m.code === '004510' || m.code === 'EPI-PRO-05'))
+    );
+  },
+
+  getMaterialLocations(materialId: string): MaterialPhysicalLocation[] {
+    const mat = this.getMaterialById(materialId);
+    return mat?.physicalLocations || [];
+  },
+
+  formatPhysicalLocationsSummary(material: Material): string {
+    const locs = material.physicalLocations || [];
+    if (locs.length === 0) return material.shelf || 'Almoxarifado Central';
+    return locs
+      .map((l) => `${l.aisle}, ${l.shelf}, ${l.level} (${l.quantity} ${material.unit})`)
+      .join(' • ');
+  },
+
+  addOrUpdateMaterialLocation(
+    materialId: string,
+    locationData: { aisle: string; shelf: string; level: string; quantity: number },
+    user: { id: string; name: string; role: UserRole }
+  ): { success: boolean; message: string; material?: Material } {
+    const materials = this.getMaterials();
+    const idx = materials.findIndex((m) => m.id === materialId);
+    if (idx === -1) return { success: false, message: 'Material não encontrado.' };
+
+    const mat = materials[idx];
+    if (!mat.physicalLocations) mat.physicalLocations = [];
+
+    const cleanAisle = locationData.aisle.trim();
+    const cleanShelf = locationData.shelf.trim();
+    const cleanLevel = locationData.level.trim();
+    const now = new Date().toISOString();
+
+    const existingLoc = mat.physicalLocations.find(
+      (l) =>
+        l.aisle.toLowerCase() === cleanAisle.toLowerCase() &&
+        l.shelf.toLowerCase() === cleanShelf.toLowerCase() &&
+        l.level.toLowerCase() === cleanLevel.toLowerCase()
+    );
+
+    if (existingLoc) {
+      existingLoc.quantity = Math.max(0, locationData.quantity);
+      existingLoc.updatedAt = now;
+    } else {
+      mat.physicalLocations.push({
+        id: 'loc-' + Math.random().toString(36).substring(2, 9),
+        aisle: cleanAisle,
+        shelf: cleanShelf,
+        level: cleanLevel,
+        quantity: Math.max(0, locationData.quantity),
+        updatedAt: now,
+      });
+    }
+
+    mat.shelf = this.formatPhysicalLocationsSummary(mat);
+    mat.updatedAt = now;
+    materials[idx] = mat;
+
+    localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(materials));
+
+    this.addAuditLog({
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      action: 'ATUALIZAR_LOCALIZACAO_FISICA',
+      entity: 'Material',
+      entityId: mat.id,
+      details: `Localização física ajustada para ${mat.code} em ${cleanAisle}, ${cleanShelf}, ${cleanLevel} (${locationData.quantity} ${mat.unit}).`,
+      ipOrSession: 'Sessão Web',
+    });
+
+    notifyListeners();
+    return { success: true, message: 'Localização física cadastrada com sucesso!', material: mat };
+  },
+
+  transferMaterialLocation(params: {
+    materialId: string;
+    sourceLocationId: string;
+    targetAisle: string;
+    targetShelf: string;
+    targetLevel: string;
+    quantity: number;
+    user: { id: string; name: string; role: UserRole };
+    observation?: string;
+  }): { success: boolean; message: string; movement?: Movement } {
+    if (params.quantity <= 0) {
+      return { success: false, message: 'A quantidade a transferir deve ser maior que zero.' };
+    }
+
+    const materials = this.getMaterials();
+    const idx = materials.findIndex((m) => m.id === params.materialId);
+    if (idx === -1) {
+      return { success: false, message: 'Material não encontrado no sistema.' };
+    }
+
+    const mat = materials[idx];
+    if (!mat.physicalLocations || mat.physicalLocations.length === 0) {
+      return { success: false, message: 'Nenhuma localização física cadastrada para este material.' };
+    }
+
+    const srcLoc = mat.physicalLocations.find((l) => l.id === params.sourceLocationId);
+    if (!srcLoc) {
+      return { success: false, message: 'Localização de origem não encontrada.' };
+    }
+
+    if (srcLoc.quantity < params.quantity) {
+      return {
+        success: false,
+        message: `Saldo insuficiente na localização de origem! Disponível no local: ${srcLoc.quantity} ${mat.unit}, Solicitado: ${params.quantity} ${mat.unit}.`,
+      };
+    }
+
+    const cleanTargetAisle = params.targetAisle.trim();
+    const cleanTargetShelf = params.targetShelf.trim();
+    const cleanTargetLevel = params.targetLevel.trim();
+
+    if (!cleanTargetAisle || !cleanTargetShelf || !cleanTargetLevel) {
+      return { success: false, message: 'Informe corredor, prateleira e nível de destino.' };
+    }
+
+    const now = new Date().toISOString();
+
+    // 1. Decrement source location
+    srcLoc.quantity -= params.quantity;
+    srcLoc.updatedAt = now;
+
+    // 2. Increment or create target location
+    let targetLoc = mat.physicalLocations.find(
+      (l) =>
+        l.aisle.toLowerCase() === cleanTargetAisle.toLowerCase() &&
+        l.shelf.toLowerCase() === cleanTargetShelf.toLowerCase() &&
+        l.level.toLowerCase() === cleanTargetLevel.toLowerCase()
+    );
+
+    if (targetLoc) {
+      targetLoc.quantity += params.quantity;
+      targetLoc.updatedAt = now;
+    } else {
+      mat.physicalLocations.push({
+        id: 'loc-' + Math.random().toString(36).substring(2, 9),
+        aisle: cleanTargetAisle,
+        shelf: cleanTargetShelf,
+        level: cleanTargetLevel,
+        quantity: params.quantity,
+        updatedAt: now,
+      });
+    }
+
+    // Filter out 0-quantity locations if other locations exist
+    if (mat.physicalLocations.filter((l) => l.quantity > 0).length > 0) {
+      mat.physicalLocations = mat.physicalLocations.filter((l) => l.quantity > 0);
+    }
+
+    // IMPORTANT: Total currentStock does NOT change!
+    mat.shelf = this.formatPhysicalLocationsSummary(mat);
+    mat.updatedAt = now;
+    materials[idx] = mat;
+
+    // 3. Register Movement of type TRANSFERENCIA_LOCAL
+    const movements = this.getMovements();
+    const movId = 'mov-' + Math.random().toString(36).substring(2, 9);
+    const newMovement: Movement = {
+      id: movId,
+      materialId: mat.id,
+      materialCode: mat.code,
+      materialName: mat.name,
+      type: 'TRANSFERENCIA_LOCAL',
+      quantity: params.quantity,
+      previousStock: mat.currentStock,
+      newStock: mat.currentStock, // Saldo total inalterado!
+      date: now,
+      userId: params.user.id,
+      userName: params.user.name,
+      userRole: params.user.role,
+      location: mat.location,
+      sourceLocation: `${srcLoc.aisle}, ${srcLoc.shelf}, ${srcLoc.level}`,
+      targetLocation: `${cleanTargetAisle}, ${cleanTargetShelf}, ${cleanTargetLevel}`,
+      observation:
+        params.observation?.trim() ||
+        `Transferência interna de ${params.quantity} ${mat.unit} de ${srcLoc.aisle}, ${srcLoc.shelf}, ${srcLoc.level} para ${cleanTargetAisle}, ${cleanTargetShelf}, ${cleanTargetLevel}.`,
+    };
+
+    movements.unshift(newMovement);
+
+    localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(materials));
+    localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
+
+    this.addAuditLog({
+      userId: params.user.id,
+      userName: params.user.name,
+      userRole: params.user.role,
+      action: 'TRANSFERENCIA_LOCAL',
+      entity: 'Movement',
+      entityId: movId,
+      details: `Reorganização física: ${params.quantity} ${mat.unit} de ${mat.code} transferidos de [${newMovement.sourceLocation}] para [${newMovement.targetLocation}]. Saldo total mantido: ${mat.currentStock} ${mat.unit}.`,
+      ipOrSession: 'Sessão Web',
+    });
+
+    notifyListeners();
+    return {
+      success: true,
+      message: `Transferência concluída com sucesso! ${params.quantity} ${mat.unit} movidos para ${cleanTargetAisle}, ${cleanTargetShelf}, ${cleanTargetLevel}. Saldo total: ${mat.currentStock} ${mat.unit}.`,
+      movement: newMovement,
+    };
+  },
+
+  registerGoodsReceipt(params: {
+    materialIdOrCode: string;
+    quantity: number;
+    supplier?: string;
+    invoiceNumber?: string;
+    receiptDate?: string;
+    aisle: string;
+    shelf: string;
+    level: string;
+    user: { id: string; name: string; role: UserRole };
+    observation?: string;
+    idempotencyKey?: string;
+  }): { success: boolean; message: string; movement?: Movement } {
+    if (params.idempotencyKey && this.isIdempotencyKeyProcessed(params.idempotencyKey)) {
+      return { success: false, message: 'Esta entrada de mercadorias já foi processada anteriormente (proteção contra duplicidade).' };
+    }
+
+    if (params.quantity <= 0) {
+      return { success: false, message: 'A quantidade recebida deve ser maior que zero.' };
+    }
+
+    const cleanAisle = params.aisle.trim();
+    const cleanShelf = params.shelf.trim();
+    const cleanLevel = params.level.trim();
+
+    if (!cleanAisle || !cleanShelf || !cleanLevel) {
+      return { success: false, message: 'Informe o corredor, prateleira e nível de armazenamento.' };
+    }
+
+    const materials = this.getMaterials();
+    const searchKey = params.materialIdOrCode.trim().toUpperCase();
+    const idx = materials.findIndex(
+      (m) =>
+        m.id === params.materialIdOrCode ||
+        m.code.toUpperCase() === searchKey ||
+        (m.ikkiCode && m.ikkiCode.toUpperCase() === searchKey) ||
+        (searchKey === 'EPI-LUV-01' && m.code === '001420') ||
+        (searchKey === 'EPI-BOT-02' && m.code === '001421') ||
+        (searchKey === 'EPI-COL-03' && m.code === '002105')
+    );
+
+    if (idx === -1) {
+      return { success: false, message: `Material com código/identificador "${params.materialIdOrCode}" não encontrado no catálogo.` };
+    }
+
+    const mat = materials[idx];
+    const previousStock = mat.currentStock;
+    const newStock = previousStock + params.quantity;
+    const now = new Date().toISOString();
+
+    // Update physical locations
+    if (!mat.physicalLocations) mat.physicalLocations = [];
+
+    let targetLoc = mat.physicalLocations.find(
+      (l) =>
+        l.aisle.toLowerCase() === cleanAisle.toLowerCase() &&
+        l.shelf.toLowerCase() === cleanShelf.toLowerCase() &&
+        l.level.toLowerCase() === cleanLevel.toLowerCase()
+    );
+
+    if (targetLoc) {
+      targetLoc.quantity += params.quantity;
+      targetLoc.updatedAt = now;
+    } else {
+      mat.physicalLocations.push({
+        id: 'loc-' + Math.random().toString(36).substring(2, 9),
+        aisle: cleanAisle,
+        shelf: cleanShelf,
+        level: cleanLevel,
+        quantity: params.quantity,
+        updatedAt: now,
+      });
+    }
+
+    mat.currentStock = newStock;
+    mat.shelf = this.formatPhysicalLocationsSummary(mat);
+    if (params.supplier && (!mat.supplier || mat.supplier === 'Não informado')) {
+      mat.supplier = params.supplier.trim();
+    }
+    mat.updatedAt = now;
+    materials[idx] = mat;
+
+    const movements = this.getMovements();
+    const movId = 'mov-' + Math.random().toString(36).substring(2, 9);
+    const newMovement: Movement = {
+      id: movId,
+      materialId: mat.id,
+      materialCode: mat.code,
+      materialName: mat.name,
+      type: 'ENTRADA_RECEBIMENTO',
+      quantity: params.quantity,
+      previousStock,
+      newStock,
+      date: now,
+      userId: params.user.id,
+      userName: params.user.name,
+      userRole: params.user.role,
+      location: mat.location,
+      sector: 'Almoxarifado Central',
+      invoiceNumber: params.invoiceNumber?.trim() || undefined,
+      supplier: params.supplier?.trim() || mat.supplier,
+      receivedDate: params.receiptDate || now.split('T')[0],
+      targetLocation: `${cleanAisle}, ${cleanShelf}, ${cleanLevel}`,
+      observation:
+        params.observation?.trim() ||
+        `Entrada de mercadorias conforme NF ${params.invoiceNumber || 'S/N'}. Fornecedor: ${params.supplier || mat.supplier || 'N/A'}. Armazenado em ${cleanAisle}, ${cleanShelf}, ${cleanLevel}.`,
+      idempotencyKey: params.idempotencyKey,
+    };
+
+    if (params.idempotencyKey) {
+      this.markIdempotencyKeyProcessed(params.idempotencyKey);
+    }
+
+    movements.unshift(newMovement);
+
+    localStorage.setItem(STORAGE_KEYS.MATERIALS, JSON.stringify(materials));
+    localStorage.setItem(STORAGE_KEYS.MOVEMENTS, JSON.stringify(movements));
+
+    this.addAuditLog({
+      userId: params.user.id,
+      userName: params.user.name,
+      userRole: params.user.role,
+      action: 'ENTRADA_RECEBIMENTO',
+      entity: 'Movement',
+      entityId: movId,
+      details: `Entrada física: +${params.quantity} ${mat.unit} de ${mat.code} - ${mat.name} (NF: ${params.invoiceNumber || 'S/N'}). Local: ${cleanAisle}, ${cleanShelf}, ${cleanLevel}. Saldo: ${previousStock} -> ${newStock}.`,
+      ipOrSession: 'Sessão Web',
+    });
+
+    notifyListeners();
+    return {
+      success: true,
+      message: `Entrada de ${params.quantity} ${mat.unit} registrada com sucesso em ${cleanAisle}, ${cleanShelf}, ${cleanLevel}! Novo saldo total: ${newStock} ${mat.unit}.`,
+      movement: newMovement,
+    };
   },
 
   createMaterial(
@@ -1155,6 +1595,7 @@ export const dbService = {
       idempotencyKey?: string;
       observation?: string;
       justification?: string;
+      date?: string;
     }
   ): { success: boolean; message: string; movement?: Movement } {
     if (params.idempotencyKey && this.isIdempotencyKeyProcessed(params.idempotencyKey)) {
@@ -1223,7 +1664,7 @@ export const dbService = {
         quantity: params.quantity,
         previousStock,
         newStock,
-        date: now,
+        date: params.date || now,
         userId: params.userId,
         userName: params.userName,
         userRole: params.userRole,
@@ -1704,6 +2145,25 @@ export const dbService = {
         const previousStock = mat.currentStock;
         const newStock = previousStock - itemDelivery.quantityToDeliver;
         mat.currentStock = newStock;
+
+        // Deduct from physical locations
+        if (mat.physicalLocations && mat.physicalLocations.length > 0) {
+          let remainingToDeduct = itemDelivery.quantityToDeliver;
+          // Sort descending by quantity to deduct from location with highest stock first
+          mat.physicalLocations.sort((a, b) => b.quantity - a.quantity);
+          for (const loc of mat.physicalLocations) {
+            if (remainingToDeduct <= 0) break;
+            const deduct = Math.min(loc.quantity, remainingToDeduct);
+            loc.quantity -= deduct;
+            remainingToDeduct -= deduct;
+            loc.updatedAt = now;
+          }
+          if (mat.physicalLocations.filter((l) => l.quantity > 0).length > 0) {
+            mat.physicalLocations = mat.physicalLocations.filter((l) => l.quantity > 0);
+          }
+          mat.shelf = this.formatPhysicalLocationsSummary(mat);
+        }
+
         mat.updatedAt = now;
         materials[matIdx] = mat;
 
